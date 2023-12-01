@@ -1,0 +1,7 @@
+PyYAML
+pre-commit
+black
+flake8
+flake8-docstrings
+isort
+pep8-naming
