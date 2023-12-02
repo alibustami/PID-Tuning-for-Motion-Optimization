@@ -1,5 +1,7 @@
 virenv:
-	conda env create -f environment.yaml
+	@echo "START: creating conda venv"
+	conda env create -f environment.yml
+	@echo "FINISH: creating conda venv"
 
 .PHONY: install
 install:
