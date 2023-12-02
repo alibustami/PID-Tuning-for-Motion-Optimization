@@ -1,4 +1,0 @@
-name: pid-tunner-env
-dependencies:
-  - python=3.8
-  - pip=21.0.1
