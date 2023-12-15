@@ -5,3 +5,4 @@ flake8
 flake8-docstrings
 isort
 pep8-naming
+pydantic==2.5.2
