@@ -1,4 +1,4 @@
-"""Settings for the smoky_flare_detection package."""
+"""Settings for the package."""
 import logging
 
 from src.models.modes import IdleMode, OptimizationMode, RunningMode
