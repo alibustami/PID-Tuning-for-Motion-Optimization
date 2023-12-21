@@ -1,6 +1,8 @@
 """This module contains the robot context class where the robot's running mode is managed."""
+from src.models.modes import OptimizationMode
 from src.models.peripherals import PeripheralsManager
-from src.settings import SELECTOR_SWITCH_PINS_TO_MODES_MAPPER, logger
+from src.settings import logger
+from src.utils.enums import PeripheralName
 
 
 class RobotContext:
@@ -53,20 +55,16 @@ class RobotContext:
 
     def _check_if_mode_changed(self):
         """Check if the mode was changed by the user."""
-        (
-            selector_switch_position,
-            was_selector_position_changed,
-        ) = self._peripherals_manager.read_data("selector_switch")
-        if was_selector_position_changed:
-            mode_object = SELECTOR_SWITCH_PINS_TO_MODES_MAPPER[
-                selector_switch_position
-            ]
-            self.set_mode(mode_object)
+        selector_switch = self._peripherals_manager.get_peripheral(
+            PeripheralName.SELECTOR_SWITCH
+        )
+        selected_mode = selector_switch.get_selected_mode()
+        return type(selected_mode) == type(self._current_mode)
 
     def _check_start_button(self):
         """Check if the start button was pressed to run the selected mode."""
-        start_button_state, _ = self._peripherals_manager.read_data(
-            "start_button"
+        start_button_state = self._peripherals_manager.read_data(
+            PeripheralName.START_BUTTON
         )
         if start_button_state == 1:
             self.run_mode()
