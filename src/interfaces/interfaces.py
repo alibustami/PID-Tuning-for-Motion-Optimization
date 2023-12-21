@@ -2,7 +2,7 @@
 from abc import ABC, abstractmethod
 from typing import Dict, List
 
-from Jetson.GPIO import GPIO
+# from Jetson.GPIO import GPIO
 from pydantic import BaseModel
 
 
@@ -32,11 +32,13 @@ class BasePeripheral(ABC):
 
     def initialize(self):
         """Initialize the Peripheral' pins (input and output)."""
-        GPIO.setmode(GPIO.BOARD)
-        for pin_number in self._input_pin_numbers.values():
-            GPIO.setup(pin_number, GPIO.IN)
-        for pin_number in self._output_pin_numbers.values():
-            GPIO.setup(pin_number, GPIO.OUT)
+        # Pass for now
+        pass
+        # GPIO.setmode(GPIO.BOARD)
+        # for pin_number in self._input_pin_numbers.values():
+        #     GPIO.setup(pin_number, GPIO.IN)
+        # for pin_number in self._output_pin_numbers.values():
+        #     GPIO.setup(pin_number, GPIO.OUT)
 
     @abstractmethod
     def read_data(self):
