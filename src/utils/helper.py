@@ -100,8 +100,11 @@ def check_recieving_angles(arduino_connection_object: Serial) -> List[float]:
         data_string = (
             arduino_connection_object.readline().decode("utf-8").strip()
         )
-        angles_data = [float(x) for x in data_string.split(",") if x != ""]
-        return angles_data
+        if len(data_string) < 70:
+            logger.info(f"From Arduino: {data_string}")
+        else:
+            angles_data = [float(x) for x in data_string.split(",") if x != ""]
+            return angles_data
     return None
 
 
@@ -132,6 +135,7 @@ def start_experimental_run_on_robot(
     """
     values = f"{kp} {ki} {kd} {run_time} {dump_rate}\n"
     start_time = time.time()
+
     while (time.time() - start_time) < 2:
         arduino_connection_object.write(values.encode())
 
@@ -141,6 +145,7 @@ def start_experimental_run_on_robot(
             if angles_data:
                 logger.info(f">>> Angles data recieved: {angles_data}")
                 return angles_data
+
     except Exception as e:
         logger.error(f"Error in <start_experimental_run_on_robot>: {e}")
         return None
