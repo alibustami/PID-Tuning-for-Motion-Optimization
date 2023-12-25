@@ -8,6 +8,7 @@ from serial import Serial
 from src.scripts.motion_simulation import (
     find_movement_after_applying_pid_controller,
 )
+from src.settings import logger
 from src.utils.helper import (
     calculate_integral_of_squared_error,
     calculate_relative_overshoot,
@@ -63,22 +64,36 @@ class DifferentialEvolutionOptimizer:
     def constraint_function(self, inputs):
         """TO BE IMPLEMENTED."""
         kp, ki, kd = inputs[0], inputs[1], inputs[2]
+        logger.info("=" * 35)
+        logger.info("Start running experiment in <constraint_function>.")
         error_values = self._run_experiment(kp, ki, kd)
+        logger.info(
+            "End running experiment in <constraint_function>; Error values:"
+        )
+        logger.info(error_values)
         overshoot = calculate_relative_overshoot(
             error_values, final_value=self.set_point
         )
         settling_time = calculate_settling_time(
             error_values, tolerance=0.09, final_value=self.set_point
         )
+        logger.info(f"Overshoot: {overshoot}")
+        logger.info(f"Settling time: {settling_time}")
         return overshoot, settling_time
 
     def objective_function(self, inputs):
         """TO BE IMPLEMENTED."""
         kp, ki, kd = inputs[0], inputs[1], inputs[2]
+        logger.info("-" * 35)
+        logger.info("Start running experiment in <objective_function>.")
         error_values = self._run_experiment(kp, ki, kd)
+        logger.info(
+            "End running experiment in <objective_function>; Error values:"
+        )
         integral_of_squared_error = calculate_integral_of_squared_error(
             error_values
         )
+        logger.info(f"Integral of squared error: {integral_of_squared_error}")
         return integral_of_squared_error
 
     def run(self) -> None:
@@ -91,6 +106,7 @@ class DifferentialEvolutionOptimizer:
             self.constraint[constraint_name][1]
             for constraint_name in self.constraint
         ]
+        logger.info("Start running optimizer...")
         self.optimizer = differential_evolution(
             disp=True,
             workers=-1,
@@ -140,5 +156,5 @@ class DifferentialEvolutionOptimizer:
             ]
             return error_values
         except Exception as e:
-            print(f"Error in <_run_experiment>: {e}")
+            logger.error(f"Error in <_run_experiment>: {e}")
             return None

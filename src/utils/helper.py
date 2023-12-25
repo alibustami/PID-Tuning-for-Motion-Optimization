@@ -4,6 +4,8 @@ from typing import List
 import numpy as np
 from serial import Serial
 
+from src.settings import logger
+
 
 def calculate_relative_overshoot(
     error_values: List[float], final_value: float
@@ -134,7 +136,8 @@ def start_experimental_run_on_robot(
         while True:
             angles_data = check_recieving_angles(arduino_connection_object)
             if angles_data:
+                logger.info(f">>> Angles data recieved: {angles_data}")
                 return angles_data
     except Exception as e:
-        print(f"Error in <start_experimental_run_on_robot>: {e}")
+        logger.error(f"Error in <start_experimental_run_on_robot>: {e}")
         return None
