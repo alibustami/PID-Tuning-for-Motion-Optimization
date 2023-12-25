@@ -41,13 +41,6 @@ class DifferentialEvolutionOptimizer:
         self.n_iter = n_iter
         self.errors_registery = []
 
-        self._init_optimizer()
-
-    def optimize(self) -> None:
-        """Optimize the PID controller parameters using Differential Evolution Optimization."""
-        # Clear the cache
-        self._run_simulation.cache_clear()
-
     def constraint_function(self, inputs):
         """TO BE IMPLEMENTED."""
         kp, ki, kd = inputs[0], inputs[1], inputs[2]
@@ -67,8 +60,8 @@ class DifferentialEvolutionOptimizer:
         )
         return integral_of_squared_error
 
-    def _init_optimizer(self) -> None:
-        """Initialize the optimizer."""
+    def run(self) -> None:
+        """Optimize the PID controller parameters using Differential Evolution Optimization."""
         lower_constraint_bounds = [
             self.constraint[constraint_name][0]
             for constraint_name in self.constraint
@@ -79,6 +72,7 @@ class DifferentialEvolutionOptimizer:
         ]
         self.optimizer = differential_evolution(
             disp=True,
+            workers=-1,
             maxiter=self.n_iter,
             polish=False,
             func=self.objective_function,
@@ -91,6 +85,8 @@ class DifferentialEvolutionOptimizer:
             if self.constraint
             else None,
         )
+
+        self._run_simulation.cache_clear()
 
     @lru_cache(maxsize=None)
     def _run_simulation(self, kp: float, ki: float, kd: float) -> None:

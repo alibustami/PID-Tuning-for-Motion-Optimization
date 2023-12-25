@@ -6,3 +6,6 @@ flake8-docstrings
 isort
 pep8-naming
 pydantic==2.5.2
+scipy==1.11.4
+bayes_opt==1.4.3
+Jetson.GPIO==2.1.5
