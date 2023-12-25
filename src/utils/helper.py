@@ -100,11 +100,16 @@ def check_recieving_angles(arduino_connection_object: Serial) -> List[float]:
         data_string = (
             arduino_connection_object.readline().decode("utf-8").strip()
         )
-        if len(data_string) < 70:
+        if len(data_string) < 90:
             logger.info(f"From Arduino: {data_string}")
         else:
-            angles_data = [float(x) for x in data_string.split(",") if x != ""]
-            return angles_data
+            try:
+                angles_data = [
+                    float(x) for x in data_string.split(",") if x != ""
+                ]
+                return angles_data
+            except:
+                pass
     return None
 
 
