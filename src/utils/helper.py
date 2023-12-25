@@ -1,4 +1,5 @@
 """Helper functions used in the project."""
+import time
 from typing import List
 
 import numpy as np
@@ -130,7 +131,9 @@ def start_experimental_run_on_robot(
         The dump rate (ms).
     """
     values = f"{kp} {ki} {kd} {run_time} {dump_rate}\n"
-    arduino_connection_object.write(values.encode())
+    start_time = time.time()
+    while (time.time() - start_time) < 2:
+        arduino_connection_object.write(values.encode())
 
     try:
         while True:
