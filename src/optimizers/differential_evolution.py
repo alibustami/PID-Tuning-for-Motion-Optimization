@@ -1,4 +1,5 @@
 """This module contains the differential evolution optimizer."""
+import os
 from functools import lru_cache
 from random import randint
 from typing import Dict, List, OrderedDict, Tuple, Union
@@ -14,6 +15,7 @@ from src.utils.helper import (
     calculate_integral_of_squared_error,
     calculate_relative_overshoot,
     calculate_settling_time,
+    log_optimizaer_data,
     start_experimental_run_on_robot,
 )
 
@@ -61,6 +63,15 @@ class DifferentialEvolutionOptimizer:
         self.experiment_total_run_time = experiment_total_run_time
         self.experiment_values_dump_rate = experiment_values_dump_rate
         self.set_point = set_point
+
+        logger_files_dir = "deo_logs/"
+        if not os.path.exists(logger_files_dir):
+            os.makedirs(logger_files_dir)
+        # Check experiment_ids in the logs directory
+        for i in range(100):
+            if f"result_{i}.csv" not in os.listdir(logger_files_dir):
+                self.experiment_id = i
+                break
 
     def constraint_function(self, inputs):
         """TO BE IMPLEMENTED."""
@@ -158,6 +169,12 @@ class DifferentialEvolutionOptimizer:
             dump_rate=self.experiment_values_dump_rate,
         )
         error_values = [output - self.set_point for output in response_data]
+        pid_ks = {"kp": constants[0], "ki": constants[1], "kd": constants[2]}
+        log_optimizaer_data(
+            angles=response_data,
+            pid_ks=pid_ks,
+            file_path=f"deo_logs/result_{self.experiment_id}.csv",
+        )
         return error_values
         # except Exception as e:
         #     logger.error(f"Error in <_run_experiment>: {e}")

@@ -1,10 +1,13 @@
 """Helper functions used in the project."""
+import datetime
+import os
 import struct
 import time
-from typing import Any, List, Tuple
+from typing import Any, Dict, List, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 from matplotlib.animation import FuncAnimation
 from serial import Serial
 
@@ -112,7 +115,9 @@ def _check_recieving_angles(arduino_connection_object: Serial) -> List[float]:
                 ]
                 return angles_data
             except:
-                pass
+                print(
+                    f"<_check_recieving_angles> Error in parsing angles data: {data_string}"
+                )
     return None
 
 
@@ -134,6 +139,18 @@ def clear_input_buffer(arduino_connection_object: Serial):
 def check_received_angles(
     arduino_connection_object: Serial,
 ) -> Tuple[bool, List[float]]:
+    """Check if the angles are received from the serial port.
+
+    Parameters
+    ----------
+    arduino_connection_object : Serial
+        The serial object.
+
+    Returns
+    -------
+    Tuple[bool, List[float]]
+        The status of the received angles and the angles data.
+    """
     recv_status = False
     angles_data = []
     data_string = (
@@ -218,3 +235,40 @@ def start_experimental_run_on_robot(
     # except Exception as e:
     #     logger.error(f"Error in <start_experimental_run_on_robot>: {e}")
     #     return None
+
+
+def log_optimizaer_data(
+    angles: List[float],
+    pid_ks: Dict["str", float],
+    experiment_id: int,
+    file_path: str,
+):
+    """Log the optimizer data to a CSV file. If the file exists, append the data to it."""
+    if not os.path.exists(file_path):
+        df = pd.DataFrame(
+            {
+                "angles": angles,
+                # "errors": errors,
+                "kp": pid_ks["kp"],
+                "ki": pid_ks["ki"],
+                "kd": pid_ks["kd"],
+            }
+        )
+        df.to_csv(file_path, index=False)
+    else:
+        df = pd.read_csv(file_path)
+        df = pd.concat(
+            [
+                df,
+                pd.DataFrame(
+                    {
+                        "angles": angles,
+                        # "errors": errors,
+                        "kp": pid_ks["kp"],
+                        "ki": pid_ks["ki"],
+                        "kd": pid_ks["kd"],
+                    }
+                ),
+            ]
+        )
+        df.to_csv(file_path, index=False)
