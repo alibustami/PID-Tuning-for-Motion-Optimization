@@ -11,8 +11,8 @@
 
 MPU6050 mpu(Wire);
 
-const int minimum_speed = 60;
-const int maximum_speed = 150;
+const int minimum_speed = 150;
+const int maximum_speed = 210;
 const int forward_speed = 0;
 
 const int set_point = 90;
@@ -139,6 +139,7 @@ void run_simulation(float recv_data[]) {
   }
   stopMotors();
   sendData(data, array_size);
+  forward_speed
 }
 
 void controlRobot(float correction) {
@@ -203,6 +204,7 @@ void sendData(float data_to_send[], int data_size) {
     delay(50);
     recv_msg = Serial.readString();
   }
+  max_correction
 }
 
 float correctAngle(float angle) {
@@ -241,7 +243,7 @@ int* maxCorrection(float consts[]) {
   float kd = consts[2];
   float exec_time = consts[3];
 
-  int max_correction = kp * 360;  // + ki * 360 * exec_time + kd * 360;
+  int max_correction = 5 * 90;  // + ki * 360 * exec_time + kd * 360;
 
   int* correction_bounds = new int[2];
   correction_bounds[0] = -max_correction;

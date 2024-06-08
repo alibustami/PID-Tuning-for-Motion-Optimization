@@ -15,14 +15,14 @@ from src.settings import logger
 
 
 def calculate_relative_overshoot(
-    error_values: List[float], final_value: float
+    angle_values: List[float], final_value: float
 ) -> float:
     """Calculate response overshoot.
 
     Parameters
     ----------
-    error_values : List[float]
-        The error over time data
+    angle_values : List[float]
+        The angles over tie
 
     final_value : float
         The desired final value of the system (set point)
@@ -32,11 +32,13 @@ def calculate_relative_overshoot(
     float
         The overshoot
     """
-    return ((max(error_values) - final_value) / final_value) * 100
+    logger.info(f"Overshoot final value: {final_value}")
+    logger.info(f"Overshoot max(angle_values): {max(angle_values)}")
+    return (abs(max(angle_values) - final_value) / final_value) * 100
 
 
 def calculate_settling_time(
-    error_values: List[float],
+    angle_values: List[float],
     final_value: float,
     tolerance: float = 0.05,
     per_value_time: int = 100,
@@ -45,7 +47,7 @@ def calculate_settling_time(
 
     Parameters
     ----------
-    error_values : List[float]
+    angle_values : List[float]
         The error values over time
     final_value : float
         The desired final value of the system (set point)
@@ -59,12 +61,13 @@ def calculate_settling_time(
     int
         The settling time
     """
-    for i in range(len(error_values)):
+    for i in range(len(angle_values)):
         if all(
-            abs(error) < final_value * tolerance for error in error_values[i:]
+            abs(angle) < final_value * tolerance for angle in angle_values[i:]
         ):
             return i * per_value_time
-    return len(error_values) * per_value_time
+    # return len(error_values) * per_value_time
+    return 2000
 
 
 def calculate_integral_of_squared_error(
@@ -240,13 +243,14 @@ def start_experimental_run_on_robot(
 def log_optimizaer_data(
     angles: List[float],
     pid_ks: Dict["str", float],
-    experiment_id: int,
+    trial_id: int,
     file_path: str,
 ):
     """Log the optimizer data to a CSV file. If the file exists, append the data to it."""
     if not os.path.exists(file_path):
         df = pd.DataFrame(
             {
+                "trial_id": trial_id,
                 "angles": angles,
                 # "errors": errors,
                 "kp": pid_ks["kp"],
@@ -262,6 +266,7 @@ def log_optimizaer_data(
                 df,
                 pd.DataFrame(
                     {
+                        "trial_id": trial_id,
                         "angles": angles,
                         # "errors": errors,
                         "kp": pid_ks["kp"],

@@ -4,6 +4,7 @@ from functools import lru_cache
 from random import randint
 from typing import Dict, List, OrderedDict, Tuple, Union
 
+import numpy as np
 from scipy.optimize import NonlinearConstraint, differential_evolution
 from serial import Serial
 
@@ -63,6 +64,7 @@ class DifferentialEvolutionOptimizer:
         self.experiment_total_run_time = experiment_total_run_time
         self.experiment_values_dump_rate = experiment_values_dump_rate
         self.set_point = set_point
+        self.trial_id = 1
 
         logger_files_dir = "deo_logs/"
         if not os.path.exists(logger_files_dir):
@@ -83,20 +85,21 @@ class DifferentialEvolutionOptimizer:
 
         logger.info("=" * 35)
         logger.info("Start running experiment in <constraint_function>.")
-        error_values = self._run_experiment((kp, ki, kd))
+        error_values, angle_values = self._run_experiment((kp, ki, kd))
         logger.info(
             "End running experiment in <constraint_function>; Error values:"
         )
-        # logger.info(error_values)
+        logger.info(f"error values in constraint_function: {error_values}")
         overshoot = calculate_relative_overshoot(
-            error_values, final_value=self.set_point
+            angle_values, final_value=self.set_point
         )
         settling_time = calculate_settling_time(
-            error_values, tolerance=0.09, final_value=self.set_point
+            error_values, tolerance=0.10, final_value=self.set_point
         )
         logger.info(f"Overshoot: {overshoot}")
         logger.info(f"Settling time: {settling_time}")
-        return overshoot, settling_time
+        retrun_array = np.array([overshoot, settling_time])
+        return retrun_array
 
     def objective_function(self, inputs):
         """TO BE IMPLEMENTED."""
@@ -108,7 +111,7 @@ class DifferentialEvolutionOptimizer:
 
         logger.info("-" * 35)
         logger.info("Start running experiment in <objective_function>.")
-        error_values = self._run_experiment((kp, ki, kd))
+        error_values, angle_values = self._run_experiment((kp, ki, kd))
         # logger.info(
         #     "End running experiment in <objective_function>; Error values:"
         # )
@@ -130,7 +133,11 @@ class DifferentialEvolutionOptimizer:
         ]
 
         logger.info("Start running optimizer...")
+        logger.info(
+            f"lower_constraint_bounds {lower_constraint_bounds}   -- upper_constraint_bounds {upper_constraint_bounds}"
+        )
         self.optimizer = differential_evolution(
+            # init=[5, 0.5, 0.5],
             disp=True,
             tol=0.5,
             atol=0.5,
@@ -171,11 +178,13 @@ class DifferentialEvolutionOptimizer:
         error_values = [output - self.set_point for output in response_data]
         pid_ks = {"kp": constants[0], "ki": constants[1], "kd": constants[2]}
         log_optimizaer_data(
+            trial_id=self.trial_id,
             angles=response_data,
             pid_ks=pid_ks,
             file_path=f"deo_logs/result_{self.experiment_id}.csv",
         )
-        return error_values
+        self.trial_id += 1
+        return error_values, response_data
         # except Exception as e:
         #     logger.error(f"Error in <_run_experiment>: {e}")
         #     return None
