@@ -1,5 +1,6 @@
 """This module contains the differential evolution optimizer."""
 from functools import lru_cache
+from random import randint
 from typing import Dict, List, OrderedDict, Tuple, Union
 
 from scipy.optimize import NonlinearConstraint, differential_evolution
@@ -64,13 +65,18 @@ class DifferentialEvolutionOptimizer:
     def constraint_function(self, inputs):
         """TO BE IMPLEMENTED."""
         kp, ki, kd = inputs[0], inputs[1], inputs[2]
+
+        # self.set_point = 0
+        # while 0 == self.set_point:
+        #     self.set_point = randint(-180, 180)
+
         logger.info("=" * 35)
         logger.info("Start running experiment in <constraint_function>.")
-        error_values = self._run_experiment(kp, ki, kd)
+        error_values = self._run_experiment((kp, ki, kd))
         logger.info(
             "End running experiment in <constraint_function>; Error values:"
         )
-        logger.info(error_values)
+        # logger.info(error_values)
         overshoot = calculate_relative_overshoot(
             error_values, final_value=self.set_point
         )
@@ -84,16 +90,21 @@ class DifferentialEvolutionOptimizer:
     def objective_function(self, inputs):
         """TO BE IMPLEMENTED."""
         kp, ki, kd = inputs[0], inputs[1], inputs[2]
+
+        # self.set_point = 0
+        # while 0 == self.set_point:
+        #     self.set_point = randint(-180, 180)
+
         logger.info("-" * 35)
         logger.info("Start running experiment in <objective_function>.")
-        error_values = self._run_experiment(kp, ki, kd)
-        logger.info(
-            "End running experiment in <objective_function>; Error values:"
-        )
+        error_values = self._run_experiment((kp, ki, kd))
+        # logger.info(
+        #     "End running experiment in <objective_function>; Error values:"
+        # )
         integral_of_squared_error = calculate_integral_of_squared_error(
             error_values
         )
-        logger.info(f"Integral of squared error: {integral_of_squared_error}")
+        # logger.info(f"Integral of squared error: {integral_of_squared_error}")
         return integral_of_squared_error
 
     def run(self) -> None:
@@ -106,9 +117,12 @@ class DifferentialEvolutionOptimizer:
             self.constraint[constraint_name][1]
             for constraint_name in self.constraint
         ]
+
         logger.info("Start running optimizer...")
         self.optimizer = differential_evolution(
             disp=True,
+            tol=0.5,
+            atol=0.5,
             workers=-1,
             maxiter=self.n_iter,
             polish=False,
@@ -126,35 +140,25 @@ class DifferentialEvolutionOptimizer:
         self._run_experiment.cache_clear()
 
     @lru_cache(maxsize=None)
-    def _run_experiment(self, kp: float, ki: float, kd: float) -> None:
+    def _run_experiment(self, constants: Tuple[int]) -> None:
         """Run the simulation with the given parameters.
 
         Parameters
         ----------
-        kp : float
-            The proportional gain.
-
-        ki : float
-            The integral gain.
-
-        kd : float
-            The derivative gain.
+        constants : Tuple[int]
+            Kp, Ki, Kd values, converted to integers.
         """
-        try:
-            response_data: Union[
-                List[float], None
-            ] = start_experimental_run_on_robot(
-                arduino_connection_object=self.arduino_connection_object,
-                kp=kp,
-                ki=ki,
-                kd=kd,
-                run_time=self.experiment_total_run_time,
-                dump_rate=self.experiment_values_dump_rate,
-            )
-            error_values = [
-                output - self.set_point for output in response_data
-            ]
-            return error_values
-        except Exception as e:
-            logger.error(f"Error in <_run_experiment>: {e}")
-            return None
+        # try:
+        response_data: Union[
+            List[float], None
+        ] = start_experimental_run_on_robot(
+            arduino_connection_object=self.arduino_connection_object,
+            constants=constants,
+            run_time=self.experiment_total_run_time,
+            dump_rate=self.experiment_values_dump_rate,
+        )
+        error_values = [output - self.set_point for output in response_data]
+        return error_values
+        # except Exception as e:
+        #     logger.error(f"Error in <_run_experiment>: {e}")
+        #     return None

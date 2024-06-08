@@ -1,8 +1,11 @@
 """Helper functions used in the project."""
+import struct
 import time
-from typing import List
+from typing import Any, List, Tuple
 
+import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.animation import FuncAnimation
 from serial import Serial
 
 from src.settings import logger
@@ -83,7 +86,7 @@ def calculate_integral_of_squared_error(
     )
 
 
-def check_recieving_angles(arduino_connection_object: Serial) -> List[float]:
+def _check_recieving_angles(arduino_connection_object: Serial) -> List[float]:
     """Check if the readings are available from the serial port.
 
     Parameters
@@ -100,9 +103,9 @@ def check_recieving_angles(arduino_connection_object: Serial) -> List[float]:
         data_string = (
             arduino_connection_object.readline().decode("utf-8").strip()
         )
-        if len(data_string) < 90:
+        if len(data_string) < 40:
             logger.info(f"From Arduino: {data_string}")
-        else:
+        if len(data_string) >= 40:
             try:
                 angles_data = [
                     float(x) for x in data_string.split(",") if x != ""
@@ -113,11 +116,48 @@ def check_recieving_angles(arduino_connection_object: Serial) -> List[float]:
     return None
 
 
+def clear_input_buffer(arduino_connection_object: Serial):
+    """Get string object from connection object.
+
+    Parameters
+    ----------
+    arduino_connection_object : Serial
+        The serial object.
+    """
+    arduino_connection_object.close()
+    arduino_connection_object.open()
+    time.sleep(2)
+    _ = arduino_connection_object.read_all()
+    arduino_connection_object.timeout = 2
+
+
+def check_received_angles(
+    arduino_connection_object: Serial,
+) -> Tuple[bool, List[float]]:
+    recv_status = False
+    angles_data = []
+    data_string = (
+        arduino_connection_object.read_until().decode("utf-8").strip()
+    )
+
+    if len(data_string) > 80:
+        try:
+            angles_data = [
+                float(angle) for angle in data_string.split(";") if angle != ""
+            ]
+            recv_status = True
+            arduino_connection_object.write(bytes("angles received", "utf-8"))
+        except:
+            recv_status = False
+    else:
+        logger.info(f"in exp got >>> {data_string}")
+
+    return recv_status, angles_data
+
+
 def start_experimental_run_on_robot(
     arduino_connection_object: Serial,
-    kp: float,
-    ki: float,
-    kd: float,
+    constants: Tuple[int],
     run_time: int,
     dump_rate: int,
 ) -> None:
@@ -127,30 +167,54 @@ def start_experimental_run_on_robot(
     ----------
     arduino_connection_object : Serial
         The serial object.
-    kp : float
-        The proportional gain.
-    ki : float
-        The integral gain.
-    kd : float
-        The derivative gain.
+    constants : Tuple[int]
+        Kp, Ki, Kd values, converted to integers.
     run_time : int
         The run time (ms).
     dump_rate : int
         The dump rate (ms).
     """
-    values = f"{kp} {ki} {kd} {run_time} {dump_rate}\n"
-    start_time = time.time()
+    send_succ = False
+    recv_succ = False
 
-    while (time.time() - start_time) < 2:
-        arduino_connection_object.write(values.encode())
+    kp, ki, kd = constants
 
-    try:
-        while True:
-            angles_data = check_recieving_angles(arduino_connection_object)
-            if angles_data:
-                logger.info(f">>> Angles data recieved: {angles_data}")
-                return angles_data
+    values = [kp, ki, kd, run_time, dump_rate]
+    packed_values = struct.pack("f" * len(values), *values)
 
-    except Exception as e:
-        logger.error(f"Error in <start_experimental_run_on_robot>: {e}")
-        return None
+    clear_input_buffer(arduino_connection_object)
+
+    while not send_succ:
+        # arduino_connection_object.write(bytes(values, "utf-8"))
+        arduino_connection_object.write(packed_values)
+        time.sleep(0.05)
+        logger.info(f"values sent to arduino >> {values}")
+        # while "params done" != status:
+        status = arduino_connection_object.read_until().decode("utf-8").strip()
+        logger.info(f"got from arduino >>> {status}")
+        send_succ = True if "done" in status else False
+        # if send_succ:
+        #     arduino_connection_object.write(bytes("params", "utf-8"))
+
+    while not recv_succ:
+        recv_succ, angles_data = check_received_angles(
+            arduino_connection_object
+        )
+        time.sleep(0.05)
+        if recv_succ:
+            logger.info(f">>> Angles data recieved: {angles_data}")
+            plt.clf()
+            plt.axhline(y=90, color="r", linestyle="--", label="Set Point")
+            plt.plot(
+                [i for i in range(len(angles_data))], angles_data, color="b"
+            )
+            plt.ylabel("IMU")
+            plt.xticks()
+            plt.yticks()
+            plt.show(block=False)
+            plt.pause(5)
+            return angles_data
+
+    # except Exception as e:
+    #     logger.error(f"Error in <start_experimental_run_on_robot>: {e}")
+    #     return None

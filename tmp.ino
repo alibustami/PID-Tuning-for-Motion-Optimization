@@ -50,10 +50,12 @@ void setup() {
 }
 
 void loop() {
+  int iters = 0;
   bool recv_succ = false;
-  float recv_data[5] = {-1.0, -1.0, -1.0, -1.0, -1.0};
+  const int input_array_size = 5;
+  float recv_data[input_array_size] = {-1.0, -1.0, -1.0, -1.0, -1.0};
   while (!recv_succ) {
-    if (Serial.available() >= sizeof(float) * 5) {
+    if (Serial.available() >= sizeof(float) * input_array_size) {
       Serial.readBytes(reinterpret_cast<char*>(recv_data), sizeof(recv_data));
       Serial.print(recv_data[0], 10);
       Serial.print(" ");
@@ -72,9 +74,11 @@ void loop() {
       }
     }
   }
+  mpu.resetAngleZ();
   run_simulation(recv_data);
   recv_succ = false;
-  delay(500);
+
+  Serial.println("Done iter: " + String(iters));
 }
 
 void run_simulation(float recv_data[]) {
@@ -97,9 +101,11 @@ void run_simulation(float recv_data[]) {
   while (dump_counter < array_size) {
     mpu.update();
     unsigned long prev_time = millis();
+
     while ((millis() - prev_time) < dump_rate) {
       mpu.update();
     };
+
     float current_angle = mpu.getAngleZ();
     current_angle = correctAngle(current_angle);
     data[dump_counter] = current_angle;
@@ -118,11 +124,11 @@ void run_simulation(float recv_data[]) {
     d = (error - last_error) * kd;
 
     correction = p + i + d;
-    Serial.print(correction, 10);
-    Serial.print(" ");
+    //    Serial.print(correction, 10);
+    //    Serial.print(" ");
     correction = corrrectionMapper(correction, bounds);
-    Serial.print(correction, 10);
-    Serial.print(" ");
+    //    Serial.print(correction, 10);
+    //    Serial.print(" ");
 
     //    correction = int(correction);
     //    correction = boundSpeed(int(correction));
