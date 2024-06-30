@@ -65,32 +65,46 @@ def calculate_settling_time(
     final_value: float,
     tolerance: float = 0.05,
     per_value_time: int = 100,
-):
-    """Calculate the settling time of a system.
+) -> float:
+    """
+    Calculate the settling time of a system.
 
     Parameters
     ----------
     angle_values : List[float]
-        The error values over time
+        The angle values over time.
     final_value : float
-        The desired final value of the system (set point)
+        The desired final value of the system (set point).
     tolerance : float, optional
-        The tolerance, by default 0.05
+        The tolerance band around the final value (default is 0.05).
     per_value_time : int, optional
-        The time between each value, by default 100 ms
+        Time per value in milliseconds (default is 100).
 
     Returns
     -------
-    int
-        The settling time
+    float
+        The settling time in milliseconds.
     """
-    for i in range(len(angle_values)):
-        if all(
-            abs(angle) < final_value * tolerance for angle in angle_values[i:]
-        ):
-            return i * per_value_time
-    # return len(error_values) * per_value_time
-    return 2000
+    if not angle_values:
+        raise ValueError("angle_values list cannot be empty")
+
+    upper_bound = final_value * (1 + tolerance)
+    lower_bound = final_value * (1 - tolerance)
+
+    logger.info(f"Final value: {final_value}, Tolerance: {tolerance}")
+    logger.info(f"Tolerance bounds: {lower_bound} to {upper_bound}")
+
+    i = len(angle_values) - 1
+    timing = per_value_time * len(angle_values)
+    while True:
+        if angle_values[i] >= lower_bound and angle_values[i] <= upper_bound:
+            i -= 1
+            timing -= per_value_time
+        else:
+            break
+    logger.info(f"Settling time: {timing} ms")
+
+    return timing
 
 
 def calculate_integral_of_squared_error(
