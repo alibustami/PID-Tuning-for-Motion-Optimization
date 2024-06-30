@@ -93,12 +93,8 @@ class DifferentialEvolutionOptimizer:
         overshoot = calculate_relative_overshoot(
             angle_values, final_value=self.set_point
         )
-        settling_time = calculate_settling_time(
-            error_values, tolerance=0.10, final_value=self.set_point
-        )
         logger.info(f"Overshoot: {overshoot}")
-        logger.info(f"Settling time: {settling_time}")
-        retrun_array = np.array([overshoot, settling_time])
+        retrun_array = np.array([overshoot])
         return retrun_array
 
     def objective_function(self, inputs):
@@ -112,14 +108,11 @@ class DifferentialEvolutionOptimizer:
         logger.info("-" * 35)
         logger.info("Start running experiment in <objective_function>.")
         error_values, angle_values = self._run_experiment((kp, ki, kd))
-        # logger.info(
-        #     "End running experiment in <objective_function>; Error values:"
-        # )
-        integral_of_squared_error = calculate_integral_of_squared_error(
-            error_values
+        settling_time = calculate_settling_time(
+            error_values, tolerance=0.10, final_value=self.set_point
         )
-        # logger.info(f"Integral of squared error: {integral_of_squared_error}")
-        return integral_of_squared_error
+        logger.info(f"Settling time: {settling_time}")
+        return settling_time
 
     def run(self) -> None:
         """Optimize the PID controller parameters using Differential Evolution Optimization."""
