@@ -1,4 +1,5 @@
 """Helper functions used in the project."""
+
 import datetime
 import os
 import struct
@@ -34,7 +35,29 @@ def calculate_relative_overshoot(
     """
     logger.info(f"Overshoot final value: {final_value}")
     logger.info(f"Overshoot max(angle_values): {max(angle_values)}")
-    return (abs(max(angle_values) - final_value) / final_value) * 100
+
+    max_angle = max(angle_values)
+    min_angle = min(angle_values)
+
+    if final_value > 0 and max_angle < final_value:
+        return 0
+    if final_value < 0 and min_angle > final_value:
+        return 0
+
+    if final_value > 0:
+        max_angle = max(angle_values)
+    elif final_value < 0:
+        max_angle = min(angle_values)
+    else:
+        min_angle = min(angle_values)
+        max_angle = max(angle_values)
+        max_angle = max(abs(max_angle), abs(min_angle))
+
+    difference = abs(max_angle - final_value)
+    overshoot = (difference / final_value) * 100
+    logger.info(f"difference: {difference}")
+    logger.info(f"Overshoot: {overshoot}")
+    return overshoot
 
 
 def calculate_settling_time(
