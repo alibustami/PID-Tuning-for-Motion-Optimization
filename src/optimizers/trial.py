@@ -13,7 +13,7 @@ set_point = 90
 #     set_point = randint(-180, 180)
 
 connection_object = Serial(
-    port="/dev/ttyACM2",
+    port="/dev/ttyACM0",
     baudrate=9600,
     timeout=0.1,
 )
@@ -21,17 +21,16 @@ print("done connecting !")
 optimizer = DifferentialEvolutionOptimizer(
     parameters_bounds={
         "Kp": (1, 25),
-        "Ki": (0.0, 1.0),
+        "Ki": (0.0, 0.2),
         "Kd": (0.0, 1.0),
     },
     constraint=OrderedDict(
         [
             ("overshoot", (0.0, 100)),
-            ("settling_time", (0.0, 9000)),
         ]
     ),
     n_iter=30,
-    experiment_total_run_time=10000,
+    experiment_total_run_time=5000,
     experiment_values_dump_rate=100,
     set_point=set_point,
     arduino_connection_object=connection_object,

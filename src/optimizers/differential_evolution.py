@@ -130,7 +130,7 @@ class DifferentialEvolutionOptimizer:
             f"lower_constraint_bounds {lower_constraint_bounds}   -- upper_constraint_bounds {upper_constraint_bounds}"
         )
         self.optimizer = differential_evolution(
-            # init=[5, 0.5, 0.5],
+            init="random",
             disp=True,
             tol=0.5,
             atol=0.5,
@@ -139,6 +139,7 @@ class DifferentialEvolutionOptimizer:
             polish=False,
             func=self.objective_function,
             bounds=list(self.parameters_bounds.values()),
+            popsize=2,
             constraints=NonlinearConstraint(
                 fun=self.constraint_function,
                 lb=lower_constraint_bounds,
@@ -148,9 +149,9 @@ class DifferentialEvolutionOptimizer:
             else None,
         )
 
-        self._run_experiment.cache_clear()
+        # self._run_experiment.cache_clear()
 
-    @lru_cache(maxsize=None)
+    # @lru_cache(maxsize=None)
     def _run_experiment(self, constants: Tuple[int]) -> None:
         """Run the simulation with the given parameters.
 
