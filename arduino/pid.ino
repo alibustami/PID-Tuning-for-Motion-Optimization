@@ -18,9 +18,17 @@ const int forward_speed = 0;
 
 const int set_point = 90;
 
-float kp = 18.09571051;
-float ki = 0.45073192;
-float kd = 0.42820656;
+// float sum_of_errors = 0;
+// float last_error = 0;
+
+// unsigned long prev_time = 0;
+
+float kp;
+float ki;
+float kd;
+unsigned int run_time;
+int array_size;
+unsigned int dump_rate;
 
 void setup() {
   pinMode(right_motor_en, OUTPUT);
@@ -43,25 +51,12 @@ void setup() {
 }
 
 void loop() {
-  float sum_of_errors = 0;
-  float last_error = 0;
-  float correction, p, i, d = 0;
-
-  float current_angle = mpu.getAngleZ();
-  current_angle = correctAngle(current_angle);
-  int error = set_point - current_angle;
-
-  sum_of_errors += error;
-
-  p = error * kp;
-  i = sum_of_errors * ki;
-  d = (error - last_error) * kd;
-
-  correction = p + i + d;
-  controlRobot(correction);
-
-  last_error = error;
-  mpu.update();
+  int iters = 0;
+  bool recv_succ = false;
+  const int input_array_size = 5;
+  float recv_data[input_array_size] = {kp, ki, kd, 10000, 100};
+  mpu.resetAngleZ();
+  run_simulation(recv_data);
 }
 
 void run_simulation(float recv_data[]) {
@@ -75,7 +70,7 @@ void run_simulation(float recv_data[]) {
   dump_rate = recv_data[4];
   array_size = run_time / dump_rate;
 
-  int *bounds = maxCorrection(recv_data);
+  int* bounds = maxCorrection(recv_data);
 
   int dump_counter = 0;
   float correction, p, i, d = 0;
@@ -218,7 +213,7 @@ int corrrectionMapper(float correction, int bounds[]) {
   return mapped_correction;
 }
 
-int *maxCorrection(float consts[]) {
+int* maxCorrection(float consts[]) {
   float kp = consts[0];
   float ki = consts[1];
   float kd = consts[2];
@@ -226,7 +221,7 @@ int *maxCorrection(float consts[]) {
 
   int max_correction = 5 * 90;  // + ki * 360 * exec_time + kd * 360;
 
-  int *correction_bounds = new int[2];
+  int* correction_bounds = new int[2];
   correction_bounds[0] = -max_correction;
   correction_bounds[1] = max_correction;
 
