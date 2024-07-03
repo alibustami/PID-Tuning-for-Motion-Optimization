@@ -40,9 +40,9 @@ def calculate_relative_overshoot(
     min_angle = min(angle_values)
 
     if final_value > 0 and max_angle < final_value:
-        return 0
+        return -np.inf
     if final_value < 0 and min_angle > final_value:
-        return 0
+        return -np.inf
 
     if final_value > 0:
         max_angle = max(angle_values)
@@ -96,12 +96,15 @@ def calculate_settling_time(
 
     i = len(angle_values) - 1
     timing = per_value_time * len(angle_values)
+    logger.info(f"Timing to be reduced: {timing}")
     while True:
         if angle_values[i] >= lower_bound and angle_values[i] <= upper_bound:
             i -= 1
             timing -= per_value_time
+            # logger.info(f"New timing at index {i} => {timing}")
         else:
             break
+
     logger.info(f"Settling time: {timing} ms")
 
     return timing
