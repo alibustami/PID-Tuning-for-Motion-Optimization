@@ -110,6 +110,45 @@ def calculate_settling_time(
     return timing
 
 
+def calculate_rise_time(
+    angle_values: List[float], set_point: float, per_value_time: int = 100
+) -> float:
+    """
+    Calculate the rise time of a system.
+
+    Parameters
+    ----------
+    angle_values : List[float]
+        The angle values over time.
+    set_point : float
+        The desired final value of the system (set point).
+    per_value_time : int, optional
+        Time per value in milliseconds (default is 100).
+
+    Returns
+    -------
+    float
+        The rise time in milliseconds.
+    """
+    if not angle_values:
+        raise ValueError("angle_values list cannot be empty")
+
+    i = 0
+    timing = 0
+    while True:
+        if angle_values[i] <= set_point * 63:
+            i += 1
+            timing += per_value_time
+        else:
+            break
+
+    logger.info(f"Rise time: {timing} ms")
+    if timing == len(angle_values) * per_value_time:
+        return float("inf")
+
+    return timing
+
+
 def calculate_integral_of_squared_error(
     error_values: List[float], latest_proportion: float = 0.5
 ) -> float:
