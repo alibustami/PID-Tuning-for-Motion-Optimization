@@ -1,3 +1,4 @@
+"""Trail Module."""
 from collections import OrderedDict
 from random import randint
 
@@ -21,7 +22,7 @@ print("done connecting !")
 optimizer = DifferentialEvolutionOptimizer(
     parameters_bounds={
         "Kp": (1, 25),
-        "Ki": (0.0, 0.2),
+        "Ki": (0.0, 1.0),
         "Kd": (0.0, 1.0),
     },
     constraint=OrderedDict(
