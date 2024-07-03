@@ -1,17 +1,26 @@
 """This module contains the BayesianOptimizer optimizer class."""
+import os
+from datetime import datetime
 from functools import lru_cache
-from typing import Dict, Tuple
+from typing import Dict, List, OrderedDict, Tuple, Union
 
+import pandas as pd
 from bayes_opt import BayesianOptimization
 from scipy.optimize import NonlinearConstraint
+from serial import Serial
 
 from src.scripts.motion_simulation import (
     find_movement_after_applying_pid_controller,
 )
+from src.settings import logger
 from src.utils.helper import (
     calculate_integral_of_squared_error,
     calculate_relative_overshoot,
+    calculate_rise_time,
     calculate_settling_time,
+    log_optimizaer_data,
+    results_columns,
+    start_experimental_run_on_robot,
 )
 
 
@@ -22,8 +31,11 @@ class BayesianOptimizer:
         self,
         set_point: float,
         parameters_bounds: Dict[str, Tuple[float, float]],
-        constraint: Dict[str, Tuple[float, float]] = None,
+        constraint: OrderedDict[str, Tuple[float, float]] = None,
         n_iter: int = 50,
+        experiment_total_run_time: int = 10000,
+        experiment_values_dump_rate: int = 100,
+        arduino_connection_object: Serial = None,
     ):
         """Initialize the optimizer.
 
@@ -45,13 +57,24 @@ class BayesianOptimizer:
         self.parameters_bounds = parameters_bounds
         self.constraint = constraint
         self.n_iter = n_iter
-        self.errors_registery = []
+        self.experiment_id = 1
+        self.experiment_total_run_time = experiment_total_run_time
+        self.experiment_values_dump_rate = experiment_values_dump_rate
+        self.arduino_connection_object = arduino_connection_object
 
         self._init_optimizer()
 
+        self.results_df = pd.DataFrame(columns=results_columns)
+        if not os.path.exists("BO-results"):
+            os.makedirs("BO-results")
+        self.file_path = os.path.join(
+            "BO-results",
+            f"{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}_de.csv",
+        )
+
     def optimize(self) -> None:
         """Optimize the PID controller parameters using BayesianOptimizer Optimization."""
-        self.optimizer.maximize(n_iter=self.n_iter)
+        self.optimizer.maximize(n_iter=self.n_iter, init_points=2)
 
         # Clear the cache
         self._run_simulation.cache_clear()
@@ -67,16 +90,14 @@ class BayesianOptimizer:
         Returns
         -------
         Tuple[float, float]
-            The constraint values (overshoot, settling_time)
+            The constraint values (overshoot, raise_time)
         """
         kp, ki, kd = inputs["Kp"], inputs["Ki"], inputs["Kd"]
-        error_values = self._run_simulation(kp, ki, kd)
-        overshoot = calculate_relative_overshoot(error_values)
-        settling_time = calculate_settling_time(
-            error_values, tolerance=0.1, final_value=self.set_point
-        )
+        error_values, angles_data = self._run_experiment((kp, ki, kd))
+        overshoot = calculate_relative_overshoot(angles_data, self.set_point)
+        raise_time = calculate_rise_time(angles_data, self.set_point)
 
-        return overshoot, settling_time
+        return overshoot, raise_time
 
     def objective_function(self, **inputs):
         """Calculate the objective value and return it.
@@ -92,10 +113,25 @@ class BayesianOptimizer:
             The objective value, which is the negative of the sum of the integral of the squared error over time
         """
         kp, ki, kd = inputs["Kp"], inputs["Ki"], inputs["Kd"]
-        error_values = self._run_simulation(kp, ki, kd)
-        sum_of_errors = calculate_integral_of_squared_error(error_values)
+        error_values, angles_data = self._run_experiment((kp, ki, kd))
+        settling_time = calculate_settling_time(
+            angles_data, tolerance=0.05, final_value=self.set_point
+        )
+        overshoot = calculate_relative_overshoot(angles_data, self.set_point)
+        raise_time = calculate_rise_time(angles_data, self.set_point)
 
-        return -sum_of_errors
+        self.log_trial_results(
+            kp=kp,
+            ki=ki,
+            kd=kd,
+            overshoot=overshoot,
+            raise_time=raise_time,
+            settling_time=settling_time,
+            angle_values=angles_data,
+            set_point=self.set_point,
+        )
+
+        return -settling_time
 
     def _init_optimizer(self) -> None:
         """Initialize the optimizer."""
@@ -120,22 +156,58 @@ class BayesianOptimizer:
         )
 
     @lru_cache(maxsize=None)
-    def _run_simulation(self, kp: float, ki: float, kd: float) -> None:
+    def _run_experiment(self, constants: Tuple[int]) -> None:
         """Run the simulation with the given parameters.
 
         Parameters
         ----------
-        kp : float
-            The proportional gain.
-
-        ki : float
-            The integral gain.
-
-        kd : float
-            The derivative gain.
+        constants : Tuple[int]
+            Kp, Ki, Kd values, converted to integers.
         """
-        pid_output = find_movement_after_applying_pid_controller(
-            kp, ki, kd, set_point=self.set_point
+        # try:
+        response_data: Union[
+            List[float], None
+        ] = start_experimental_run_on_robot(
+            arduino_connection_object=self.arduino_connection_object,
+            constants=constants,
+            run_time=self.experiment_total_run_time,
+            dump_rate=self.experiment_values_dump_rate,
         )
-        error_values = [output - self.set_point for output in pid_output]
-        return error_values
+        error_values = [output - self.set_point for output in response_data]
+        # log_optimizaer_data(
+        #     experiment_id=self.experiment_id,
+        #     angles=response_data,
+        #     pid_ks=pid_ks,
+        #     file_path=f"deo_logs/result_{self.experiment_id}.csv",
+        # )
+        self.experiment_id += 1
+        return error_values, response_data
+
+    def log_trial_results(
+        self,
+        kp,
+        ki,
+        kd,
+        overshoot,
+        rise_time,
+        settling_time,
+        angle_values,
+        set_point,
+    ):
+        """Log the results of the trial. Used only in the objective function."""
+        self.results_df = self.results_df.append(
+            {
+                "experiment_id": self.experiment_id,
+                "kp": kp,
+                "ki": ki,
+                "kd": kd,
+                "overshoot": overshoot,
+                "rise_time": rise_time,
+                "settling_time": settling_time,
+                "angle_values": angle_values,
+                "set_point": set_point,
+            },
+            ignore_index=True,
+        )
+        self.experiment_id += 1
+        self.results_df.to_csv(self.file_path, index=False)

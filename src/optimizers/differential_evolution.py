@@ -1,10 +1,12 @@
 """This module contains the differential evolution optimizer."""
 import os
+from datetime import datetime
 from functools import lru_cache
 from random import randint
 from typing import Dict, List, OrderedDict, Tuple, Union
 
 import numpy as np
+import pandas as pd
 from scipy.optimize import NonlinearConstraint, differential_evolution
 from serial import Serial
 
@@ -18,6 +20,7 @@ from src.utils.helper import (
     calculate_rise_time,
     calculate_settling_time,
     log_optimizaer_data,
+    results_columns,
     start_experimental_run_on_robot,
 )
 
@@ -65,16 +68,15 @@ class DifferentialEvolutionOptimizer:
         self.experiment_total_run_time = experiment_total_run_time
         self.experiment_values_dump_rate = experiment_values_dump_rate
         self.set_point = set_point
-        self.trial_id = 1
+        self.experiment_id = 1
 
-        logger_files_dir = "deo_logs/"
-        if not os.path.exists(logger_files_dir):
-            os.makedirs(logger_files_dir)
-        # Check experiment_ids in the logs directory
-        for i in range(100):
-            if f"result_{i}.csv" not in os.listdir(logger_files_dir):
-                self.experiment_id = i
-                break
+        self.results_df = pd.DataFrame(columns=results_columns)
+        if not os.path.exists("DE-results"):
+            os.makedirs("DE-results")
+        self.file_path = os.path.join(
+            "DE-results",
+            f"{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}_de.csv",
+        )
 
     def constraint_function(self, inputs):
         """TO BE IMPLEMENTED."""
@@ -111,9 +113,23 @@ class DifferentialEvolutionOptimizer:
         logger.info("Start running experiment in <objective_function>.")
         error_values, angle_values = self._run_experiment((kp, ki, kd))
         settling_time = calculate_settling_time(
-            angle_values, tolerance=0.10, final_value=self.set_point
+            angle_values, tolerance=0.05, final_value=self.set_point
         )
-        logger.info(f"Settling time: {settling_time}")
+        overshoot = calculate_relative_overshoot(
+            angle_values, final_value=self.set_point
+        )
+        rise_time = calculate_rise_time(angle_values, set_point=self.set_point)
+        self.log_trial_results(
+            kp=kp,
+            ki=ki,
+            kd=kd,
+            overshoot=overshoot,
+            rise_time=rise_time,
+            settling_time=settling_time,
+            angle_values=angle_values,
+            set_point=self.set_point,
+        )
+
         return settling_time
 
     def run(self) -> None:
@@ -174,15 +190,34 @@ class DifferentialEvolutionOptimizer:
             dump_rate=self.experiment_values_dump_rate,
         )
         error_values = [output - self.set_point for output in response_data]
-        pid_ks = {"kp": constants[0], "ki": constants[1], "kd": constants[2]}
-        log_optimizaer_data(
-            trial_id=self.trial_id,
-            angles=response_data,
-            pid_ks=pid_ks,
-            file_path=f"deo_logs/result_{self.experiment_id}.csv",
-        )
-        self.trial_id += 1
+
         return error_values, response_data
-        # except Exception as e:
-        #     logger.error(f"Error in <_run_experiment>: {e}")
-        #     return None
+
+    def log_trial_results(
+        self,
+        kp,
+        ki,
+        kd,
+        overshoot,
+        rise_time,
+        settling_time,
+        angle_values,
+        set_point,
+    ):
+        """Log the results of the trial. Used only in the objective function."""
+        self.results_df = self.results_df.append(
+            {
+                "experiment_id": self.experiment_id,
+                "kp": kp,
+                "ki": ki,
+                "kd": kd,
+                "overshoot": overshoot,
+                "rise_time": rise_time,
+                "settling_time": settling_time,
+                "angle_values": angle_values,
+                "set_point": set_point,
+            },
+            ignore_index=True,
+        )
+        self.experiment_id += 1
+        self.results_df.to_csv(self.file_path, index=False)

@@ -358,3 +358,16 @@ def log_optimizaer_data(
             ]
         )
         df.to_csv(file_path, index=False)
+
+
+results_columns = [
+    "experiment_id",
+    "kp",
+    "ki",
+    "kd",
+    "overshoot",
+    "rise_time",
+    "settling_time",
+    "angle_values",
+    "set_point",
+]
