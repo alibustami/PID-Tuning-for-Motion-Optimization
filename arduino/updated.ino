@@ -13,7 +13,7 @@ MPU6050 mpu(Wire);
 
 const int minimum_speed = 150;
 const int maximum_speed = 210;
-const int forward_speed = 0;
+const int forward_speed = 60;
 
 const int set_point = 90;
 
@@ -143,7 +143,7 @@ void run_simulation(float recv_data[]) {
 
 void controlRobot(float correction) {
   _control_right(correction);
-  _control_left(-correction - 60);
+  _control_left(-correction);
 }
 
 void _control_right(float correction) {
