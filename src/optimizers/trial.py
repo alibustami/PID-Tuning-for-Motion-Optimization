@@ -1,4 +1,5 @@
 """Trail Module."""
+
 from collections import OrderedDict
 from random import randint
 
@@ -28,6 +29,7 @@ optimizer = DifferentialEvolutionOptimizer(
     constraint=OrderedDict(
         [
             ("overshoot", (0.0, 100)),
+            ("risetime", (0.0, 2000)),
         ]
     ),
     n_iter=30,
