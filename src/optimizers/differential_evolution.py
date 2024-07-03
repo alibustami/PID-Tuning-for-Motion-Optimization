@@ -15,6 +15,7 @@ from src.settings import logger
 from src.utils.helper import (
     calculate_integral_of_squared_error,
     calculate_relative_overshoot,
+    calculate_rise_time,
     calculate_settling_time,
     log_optimizaer_data,
     start_experimental_run_on_robot,
@@ -93,8 +94,9 @@ class DifferentialEvolutionOptimizer:
         overshoot = calculate_relative_overshoot(
             angle_values, final_value=self.set_point
         )
+        rise_time = calculate_rise_time(angle_values, set_point=self.set_point)
         logger.info(f"Overshoot: {overshoot}")
-        retrun_array = np.array([overshoot])
+        retrun_array = np.array([overshoot, rise_time])
         return retrun_array
 
     def objective_function(self, inputs):
