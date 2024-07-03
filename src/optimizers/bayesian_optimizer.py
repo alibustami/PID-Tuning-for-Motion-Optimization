@@ -72,12 +72,11 @@ class BayesianOptimizer:
             f"{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}_de.csv",
         )
 
-    def optimize(self) -> None:
+    def run(self) -> None:
         """Optimize the PID controller parameters using BayesianOptimizer Optimization."""
         self.optimizer.maximize(n_iter=self.n_iter, init_points=2)
 
-        # Clear the cache
-        self._run_simulation.cache_clear()
+        print(self.optimzer.max)
 
     def constraint_function(self, **inputs):
         """Calculate the constraint values and return them as a tuple.
@@ -118,14 +117,14 @@ class BayesianOptimizer:
             angles_data, tolerance=0.05, final_value=self.set_point
         )
         overshoot = calculate_relative_overshoot(angles_data, self.set_point)
-        raise_time = calculate_rise_time(angles_data, self.set_point)
+        rise_time = calculate_rise_time(angles_data, self.set_point)
 
         self.log_trial_results(
             kp=kp,
             ki=ki,
             kd=kd,
             overshoot=overshoot,
-            raise_time=raise_time,
+            rise_time=rise_time,
             settling_time=settling_time,
             angle_values=angles_data,
             set_point=self.set_point,
