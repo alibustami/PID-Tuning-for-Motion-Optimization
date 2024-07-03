@@ -195,18 +195,24 @@ class BayesianOptimizer:
         set_point,
     ):
         """Log the results of the trial. Used only in the objective function."""
-        self.results_df = self.results_df.append(
-            {
-                "experiment_id": self.experiment_id,
-                "kp": kp,
-                "ki": ki,
-                "kd": kd,
-                "overshoot": overshoot,
-                "rise_time": rise_time,
-                "settling_time": settling_time,
-                "angle_values": angle_values,
-                "set_point": set_point,
-            },
+        self.results_df = pd.concat(
+            [
+                self.results_df,
+                pd.DataFrame(
+                    {
+                        "experiment_id": self.experiment_id,
+                        "kp": kp,
+                        "ki": ki,
+                        "kd": kd,
+                        "overshoot": overshoot,
+                        "rise_time": rise_time,
+                        "settling_time": settling_time,
+                        "angle_values": [angle_values],
+                        "set_point": set_point,
+                    },
+                    index=[0],
+                ),
+            ],
             ignore_index=True,
         )
         self.experiment_id += 1
