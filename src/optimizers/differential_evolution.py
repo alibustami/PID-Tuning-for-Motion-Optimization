@@ -109,7 +109,7 @@ class DifferentialEvolutionOptimizer:
         logger.info("Start running experiment in <objective_function>.")
         error_values, angle_values = self._run_experiment((kp, ki, kd))
         settling_time = calculate_settling_time(
-            error_values, tolerance=0.10, final_value=self.set_point
+            angle_values, tolerance=0.10, final_value=self.set_point
         )
         logger.info(f"Settling time: {settling_time}")
         return settling_time
@@ -134,7 +134,7 @@ class DifferentialEvolutionOptimizer:
             disp=True,
             tol=0.5,
             atol=0.5,
-            workers=-1,
+            workers=1,
             maxiter=self.n_iter,
             polish=False,
             func=self.objective_function,
@@ -148,10 +148,12 @@ class DifferentialEvolutionOptimizer:
             if self.constraint
             else None,
         )
+        print("--------- OPTIMIZATION DONE --------")
+        print(self.optimizer.x)
+        print(self.optimizer.fun)
+        self._run_experiment.cache_clear()
 
-        # self._run_experiment.cache_clear()
-
-    # @lru_cache(maxsize=None)
+    @lru_cache(maxsize=None)
     def _run_experiment(self, constants: Tuple[int]) -> None:
         """Run the simulation with the given parameters.
 
