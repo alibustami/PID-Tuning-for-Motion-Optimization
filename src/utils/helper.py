@@ -40,9 +40,9 @@ def calculate_relative_overshoot(
     min_angle = min(angle_values)
 
     if final_value > 0 and max_angle < final_value:
-        return -np.inf
+        return -100000
     if final_value < 0 and min_angle > final_value:
-        return -np.inf
+        return -100000
 
     if final_value > 0:
         max_angle = max(angle_values)
@@ -128,7 +128,7 @@ def calculate_rise_time(
     Returns
     -------
     float
-        The rise time in milliseconds.
+        The rise time in millnp.infiseconds.
     """
     if not angle_values:
         raise ValueError("angle_values list cannot be empty")
@@ -136,7 +136,7 @@ def calculate_rise_time(
     i = 0
     timing = 0
     while True:
-        if angle_values[i] <= set_point * 63:
+        if i < len(angle_values) and angle_values[i] <= set_point * 0.63:
             i += 1
             timing += per_value_time
         else:
@@ -144,7 +144,7 @@ def calculate_rise_time(
 
     logger.info(f"Rise time: {timing} ms")
     if timing == len(angle_values) * per_value_time:
-        return float("inf")
+        return 100000
 
     return timing
 
@@ -225,7 +225,7 @@ def check_received_angles(
 
     Parameters
     ----------
-    arduino_connection_object : Serial
+    arduino_connection_objectnp.inf : Serial
         The serial object.
 
     Returns
