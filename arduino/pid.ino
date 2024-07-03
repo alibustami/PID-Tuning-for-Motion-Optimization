@@ -1,20 +1,19 @@
 #include <MPU6050_light.h>
-
 #include "Wire.h"
 
 #define right_motor_en 11
-#define right_motor_f 4
-#define right_motor_b 5
+#define right_motor_f 5
+#define right_motor_b 4
 
 #define left_motor_en 10
-#define left_motor_f 7
-#define left_motor_b 6
+#define left_motor_f 6
+#define left_motor_b 7
 
 MPU6050 mpu(Wire);
 
 const int minimum_speed = 150;
 const int maximum_speed = 210;
-const int forward_speed = 0;
+const int forward_speed = 60;
 
 const int set_point = 90;
 
@@ -51,26 +50,50 @@ void setup() {
 }
 
 void loop() {
-  int iters = 0;
-  bool recv_succ = false;
-  const int input_array_size = 5;
-  float recv_data[input_array_size] = {kp, ki, kd, 10000, 100};
+  // int iters = 0;
+  // bool recv_succ = false;
+  // const int input_array_size = 5;
+  // float recv_data[input_array_size] = {-1.0, -1.0, -1.0, -1.0, -1.0};
+  // while (!recv_succ) {
+  //   if (Serial.available() >= sizeof(float) * input_array_size) {
+  //     Serial.readBytes(reinterpret_cast<char*>(recv_data),
+  //     sizeof(recv_data)); Serial.print(recv_data[0], 10); Serial.print(" ");
+  //     Serial.print(recv_data[1], 10);
+  //     Serial.print(" ");
+  //     Serial.print(recv_data[2], 10);
+  //     Serial.print(" ");
+  //     Serial.print(recv_data[3]);
+  //     Serial.print(" ");
+  //     Serial.print(recv_data[4]);
+  //     Serial.print(" ");
+  //     if ((recv_data[0] > 0) && (recv_data[1] >= 0) && (recv_data[2] >= 0) &&
+  //         (recv_data[3] > 0) && (recv_data[4] > 0)) {
+  //       recv_succ = true;
+  //       Serial.println(String("done"));
+  //     }
+  //   }
+  // }
   mpu.resetAngleZ();
-  run_simulation(recv_data);
+  run_simulation();
+  // run_simulation(recv_data);
+  // recv_succ = false;
+
+  // Serial.println("Done iter: " + String(iters));
 }
 
-void run_simulation(float recv_data[]) {
+// void run_simulation(float recv_data[]) {
+void run_simulation() {
   float sum_of_errors = 0;
   float last_error = 0;
 
-  kp = recv_data[0];
-  ki = recv_data[1];
-  kd = recv_data[2];
-  run_time = recv_data[3];
-  dump_rate = recv_data[4];
+  kp = 11.084302;
+  ki = 0.11853335;
+  kd = 0.16000846;
+  run_time = 15000;
+  dump_rate = 100;
   array_size = run_time / dump_rate;
 
-  int* bounds = maxCorrection(recv_data);
+  // int* bounds = maxCorrection(recv_data);
 
   int dump_counter = 0;
   float correction, p, i, d = 0;
@@ -86,6 +109,7 @@ void run_simulation(float recv_data[]) {
 
     float current_angle = mpu.getAngleZ();
     current_angle = correctAngle(current_angle);
+    Serial.println(current_angle);
     data[dump_counter] = current_angle;
 
     dump_counter++;
@@ -121,7 +145,7 @@ void run_simulation(float recv_data[]) {
 
 void controlRobot(float correction) {
   _control_right(correction);
-  _control_left(-correction - 60);
+  _control_left(-correction);
 }
 
 void _control_right(float correction) {
