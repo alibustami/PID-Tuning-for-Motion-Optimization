@@ -76,7 +76,7 @@ class BayesianOptimizer:
         """Optimize the PID controller parameters using BayesianOptimizer Optimization."""
         self.optimizer.maximize(n_iter=self.n_iter, init_points=2)
 
-        print(self.optimzer.max)
+        print(self.optimizer.max)
 
     def constraint_function(self, **inputs):
         """Calculate the constraint values and return them as a tuple.
