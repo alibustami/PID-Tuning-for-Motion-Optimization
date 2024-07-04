@@ -5,10 +5,10 @@ from random import randint
 
 from serial import Serial
 
+from src.optimizers.bayesian_optimizer import BayesianOptimizer
 from src.optimizers.differential_evolution import (
     DifferentialEvolutionOptimizer,
 )
-from src.optimizers.bayesian_optimizer import BayesianOptimizer
 from src.utils.helper import clear_input_buffer
 
 set_point = 90
