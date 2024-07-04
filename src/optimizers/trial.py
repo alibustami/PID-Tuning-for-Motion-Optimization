@@ -8,6 +8,7 @@ from serial import Serial
 from src.optimizers.differential_evolution import (
     DifferentialEvolutionOptimizer,
 )
+from src.optimizers.bayesian_optimizer import BayesianOptimizer
 from src.utils.helper import clear_input_buffer
 
 set_point = 90
@@ -20,7 +21,7 @@ connection_object = Serial(
     timeout=0.1,
 )
 print("done connecting !")
-optimizer = DifferentialEvolutionOptimizer(
+optimizer = BayesianOptimizer(
     parameters_bounds={
         "Kp": (1, 25),
         "Ki": (0.0, 1.0),
@@ -28,8 +29,8 @@ optimizer = DifferentialEvolutionOptimizer(
     },
     constraint=OrderedDict(
         [
-            ("overshoot", (0.0, 100)),
-            ("risetime", (0.0, 2000)),
+            ("overshoot", (0.0, 30)),
+            ("risetime", (0.0, 600)),
         ]
     ),
     n_iter=30,
