@@ -16,3 +16,8 @@ pyserial==3.5
 luma==2.3.6
 luma.oled==3.13.0
 pandas==2.0.3
+plotly==5.22.0
+pandas==2.0.3
+chart-studio==1.1.0
+matplotlib==3.7.5
+nbformat==5.10.4
