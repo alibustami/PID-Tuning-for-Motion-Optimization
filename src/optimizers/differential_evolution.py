@@ -1,12 +1,13 @@
-"""This module contains the BayesianOptimizer optimizer class."""
+"""This module contains the differential evolution optimizer."""
 import os
 from datetime import datetime
 from functools import lru_cache
+from random import randint
 from typing import Dict, List, OrderedDict, Tuple, Union
 
+import numpy as np
 import pandas as pd
-from bayes_opt import BayesianOptimization
-from scipy.optimize import NonlinearConstraint
+from scipy.optimize import NonlinearConstraint, differential_evolution
 from serial import Serial
 
 from src.scripts.motion_simulation import (
@@ -24,26 +25,23 @@ from src.utils.helper import (
 )
 
 
-class BayesianOptimizer:
-    """Optimize the PID controller parameters (Kp, Ki, Kd) using BayesianOptimizer Optimization."""
+class DifferentialEvolutionOptimizer:
+    """Optimize the PID controller parameters (Kp, Ki, Kd) using Differential Evolution Optimization."""
 
     def __init__(
         self,
-        set_point: float,
+        arduino_connection_object: Serial,
         parameters_bounds: Dict[str, Tuple[float, float]],
         constraint: OrderedDict[str, Tuple[float, float]] = None,
         n_iter: int = 50,
         experiment_total_run_time: int = 10000,
         experiment_values_dump_rate: int = 100,
-        arduino_connection_object: Serial = None,
+        set_point: float = 90,
     ):
         """Initialize the optimizer.
 
         Parameters
         ----------
-        set_point : float
-            The set point of the system, which is the desired value of the system.
-
         parameters_bounds : Dict[str, Tuple[float,  float]]
             The bounds for the PID controller parameters (Kp, Ki, Kd)
 
@@ -52,73 +50,75 @@ class BayesianOptimizer:
 
         n_iter : int, optional
             The number of iterations to run the optimizer, by default 50
+
+        experiment_total_run_time : int, optional
+            The total time to run the experiment, by default 10000
+
+        experiment_values_dump_rate : int, optional
+            The rate at which the values are dumped, by default 100
+
+        set_point : float, optional
+            The desired angle value, by default 90
         """
-        self.set_point = set_point
         self.parameters_bounds = parameters_bounds
         self.constraint = constraint
         self.n_iter = n_iter
-        self.experiment_id = 1
+        self.errors_registery = []
+        self.arduino_connection_object = arduino_connection_object
         self.experiment_total_run_time = experiment_total_run_time
         self.experiment_values_dump_rate = experiment_values_dump_rate
-        self.arduino_connection_object = arduino_connection_object
-
-        self._init_optimizer()
+        self.set_point = set_point
+        self.experiment_id = 1
 
         self.results_df = pd.DataFrame(columns=results_columns)
-        if not os.path.exists("BO-results"):
-            os.makedirs("BO-results")
+        if not os.path.exists("DE-results"):
+            os.makedirs("DE-results")
         self.file_path = os.path.join(
-            "BO-results",
+            "DE-results",
             f"{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}_de.csv",
         )
 
-    def run(self) -> None:
-        """Optimize the PID controller parameters using BayesianOptimizer Optimization."""
-        self.optimizer.maximize(n_iter=self.n_iter, init_points=2)
+    def constraint_function(self, inputs):
+        """TO BE IMPLEMENTED."""
+        kp, ki, kd = inputs[0], inputs[1], inputs[2]
 
-        print(self.optimizer.max)
+        # self.set_point = 0
+        # while 0 == self.set_point:
+        #     self.set_point = randint(-180, 180)
 
-    def constraint_function(self, **inputs):
-        """Calculate the constraint values and return them as a tuple.
-
-        Parameters
-        ----------
-        inputs : Dict[str, float]
-            The inputs to the constraint function, which are the PID controller parameters (Kp, Ki, Kd)
-
-        Returns
-        -------
-        Tuple[float, float]
-            The constraint values (overshoot, raise_time)
-        """
-        kp, ki, kd = inputs["Kp"], inputs["Ki"], inputs["Kd"]
-        error_values, angles_data = self._run_experiment((kp, ki, kd))
-        overshoot = calculate_relative_overshoot(angles_data, self.set_point)
-        raise_time = calculate_rise_time(angles_data, self.set_point)
-
-        return overshoot, raise_time
-
-    def objective_function(self, **inputs):
-        """Calculate the objective value and return it.
-
-        Parameters
-        ----------
-        inputs : Dict[str, float]
-            The inputs to the objective function, which are the PID controller parameters (Kp, Ki, Kd)
-
-        Returns
-        -------
-        float
-            The objective value, which is the negative of the sum of the integral of the squared error over time
-        """
-        kp, ki, kd = inputs["Kp"], inputs["Ki"], inputs["Kd"]
-        error_values, angles_data = self._run_experiment((kp, ki, kd))
-        settling_time = calculate_settling_time(
-            angles_data, tolerance=0.05, final_value=self.set_point
+        logger.info("=" * 35)
+        logger.info("Start running experiment in <constraint_function>.")
+        error_values, angle_values = self._run_experiment((kp, ki, kd))
+        logger.info(
+            "End running experiment in <constraint_function>; Error values:"
         )
-        overshoot = calculate_relative_overshoot(angles_data, self.set_point)
-        rise_time = calculate_rise_time(angles_data, self.set_point)
+        logger.info(f"error values in constraint_function: {error_values}")
+        overshoot = calculate_relative_overshoot(
+            angle_values, final_value=self.set_point
+        )
+        rise_time = calculate_rise_time(angle_values, set_point=self.set_point)
+        logger.info(f"Overshoot: {overshoot}")
+        retrun_array = np.array([overshoot, rise_time])
+        return retrun_array
 
+    def objective_function(self, inputs):
+        """TO BE IMPLEMENTED."""
+        kp, ki, kd = inputs[0], inputs[1], inputs[2]
+
+        # self.set_point = 0
+        # while 0 == self.set_point:
+        #     self.set_point = randint(-180, 180)
+
+        logger.info("-" * 35)
+        logger.info("Start running experiment in <objective_function>.")
+        error_values, angle_values = self._run_experiment((kp, ki, kd))
+        settling_time = calculate_settling_time(
+            angle_values, tolerance=0.05, final_value=self.set_point
+        )
+        overshoot = calculate_relative_overshoot(
+            angle_values, final_value=self.set_point
+        )
+        rise_time = calculate_rise_time(angle_values, set_point=self.set_point)
         self.log_trial_results(
             kp=kp,
             ki=ki,
@@ -126,14 +126,14 @@ class BayesianOptimizer:
             overshoot=overshoot,
             rise_time=rise_time,
             settling_time=settling_time,
-            angle_values=angles_data,
+            angle_values=angle_values,
             set_point=self.set_point,
         )
 
-        return -settling_time
+        return settling_time
 
-    def _init_optimizer(self) -> None:
-        """Initialize the optimizer."""
+    def run(self) -> None:
+        """Optimize the PID controller parameters using Differential Evolution Optimization."""
         lower_constraint_bounds = [
             self.constraint[constraint_name][0]
             for constraint_name in self.constraint
@@ -142,17 +142,34 @@ class BayesianOptimizer:
             self.constraint[constraint_name][1]
             for constraint_name in self.constraint
         ]
-        constraint_model = NonlinearConstraint(
-            fun=self.constraint_function,
-            lb=lower_constraint_bounds,
-            ub=upper_constraint_bounds,
+
+        logger.info("Start running optimizer...")
+        logger.info(
+            f"lower_constraint_bounds {lower_constraint_bounds}   -- upper_constraint_bounds {upper_constraint_bounds}"
         )
-        self.optimizer = BayesianOptimization(
-            f=self.objective_function,
-            pbounds=self.parameters_bounds,
-            constraint=constraint_model,
-            verbose=2,
+        self.optimizer = differential_evolution(
+            init="random",
+            disp=True,
+            tol=0.5,
+            atol=0.5,
+            workers=1,
+            maxiter=self.n_iter,
+            polish=False,
+            func=self.objective_function,
+            bounds=list(self.parameters_bounds.values()),
+            popsize=2,
+            constraints=NonlinearConstraint(
+                fun=self.constraint_function,
+                lb=lower_constraint_bounds,
+                ub=upper_constraint_bounds,
+            )
+            if self.constraint
+            else None,
         )
+        print("--------- OPTIMIZATION DONE --------")
+        print(self.optimizer.x)
+        print(self.optimizer.fun)
+        self._run_experiment.cache_clear()
 
     @lru_cache(maxsize=None)
     def _run_experiment(self, constants: Tuple[int]) -> None:
@@ -173,13 +190,7 @@ class BayesianOptimizer:
             dump_rate=self.experiment_values_dump_rate,
         )
         error_values = [output - self.set_point for output in response_data]
-        # log_optimizaer_data(
-        #     experiment_id=self.experiment_id,
-        #     angles=response_data,
-        #     pid_ks=pid_ks,
-        #     file_path=f"deo_logs/result_{self.experiment_id}.csv",
-        # )
-        self.experiment_id += 1
+
         return error_values, response_data
 
     def log_trial_results(

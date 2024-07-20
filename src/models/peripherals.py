@@ -1,16 +1,20 @@
 """Models for the Jetson Nano peripheral devices.""" ""
-from typing import Dict, List
+from typing import Any, Dict, List, Tuple
 
-from Jetson.GPIO import GPIO
+from pydantic import BaseModel
 
-from interfaces.interfaces import BasePeripheral, BasePeripheralParameters
+from src.interfaces.interfaces import BasePeripheral, BasePeripheralParameters
+from src.models.modes import IdleMode, OptimizationMode, RunningMode
 from src.settings import logger
+from src.utils.enums import PeripheralName
+
+# from Jetson.GPIO import GPIO
 
 
 class PeripheralsManager:
     """Manage the prepheral models."""
 
-    def __init__(self, peripherals: Dict[str, BasePeripheral]):
+    def __init__(self, peripherals: Dict[PeripheralName, BasePeripheral]):
         """Initialize the prepheral models.
 
         Parameters
@@ -19,12 +23,8 @@ class PeripheralsManager:
             The prepheral models. keys are the names of the prepheral based on the user preference. values are the prepheral models.
         """
         self._peripherals = peripherals
-        self._peripherals_last_read_data_registery = {
-            peripheral_name: None
-            for peripheral_name in self._peripherals.keys()
-        }
 
-    def read_data(self, prepheral_name: str):
+    def read_data(self, prepheral_name: PeripheralName):
         """Read data from a specific prepheral.
 
         Parameters
@@ -46,23 +46,16 @@ class PeripheralsManager:
             )
 
         data = self._peripherals[prepheral_name].read_data()
-        is_data_changed = (
-            self._peripherals_last_read_data_registery.get(
-                prepheral_name, None
-            )
-            != data
-        )
-        self._peripherals_last_read_data_registery[prepheral_name] = data
-        return data, is_data_changed
+        return data
 
-    def write_data(self, prepheral_name: str, data: str):
+    def write_data(self, prepheral_name: PeripheralName, data: Any):
         """Write data to a specific prepheral.
 
         Parameters
         ----------
-        prepheral_name : str
+        prepheral_name : PeripheralName
             The name of the prepheral.
-        data : str
+        data : Any
             The data to write to the prepheral.
         """
         if prepheral_name not in self._peripherals:
@@ -74,6 +67,29 @@ class PeripheralsManager:
             )
 
         self._peripherals[prepheral_name].write_data(data)
+
+    def get_peripheral(self, prepheral_name: PeripheralName) -> BasePeripheral:
+        """Get a specific prepheral.
+
+        Parameters
+        ----------
+        prepheral_name : PeripheralName
+            The name of the prepheral.
+
+        Returns
+        -------
+        BasePeripheral
+            The prepheral model.
+        """
+        if prepheral_name not in self._peripherals:
+            logger.error(
+                f"<get_peripheral>: Prepheral ({prepheral_name}) is not found."
+            )
+            raise ValueError(
+                f"<get_peripheral>: Prepheral ({prepheral_name}) is not found."
+            )
+
+        return self._peripherals[prepheral_name]
 
     def get_registered_peripherals_names(self) -> List[str]:
         """Get the names of the registered prepherals.
@@ -107,7 +123,8 @@ class StartButton:
         int
             The state of the button.
         """
-        return GPIO.input(self._input_pin_numbers["start_button_pin"])
+        pass
+        # return GPIO.input(self._input_pin_numbers["start_button_pin"])
 
 
 class SelectorSwitchParameters(BasePeripheralParameters):
@@ -118,6 +135,11 @@ class SelectorSwitchParameters(BasePeripheralParameters):
         "optimization_pin": 2,
         "idle_pin": 3,
     }
+    pins_to_mode_mapper: Dict[str, object] = {
+        "normal_pin": RunningMode(),
+        "optimization_pin": IdleMode(),
+        "idle_pin": OptimizationMode(),
+    }
 
 
 class SelectorSwitch:
@@ -126,24 +148,40 @@ class SelectorSwitch:
     def __init__(self, parameters: SelectorSwitchParameters):
         """Initialize the selector switch."""
         super().__init__(parameters)
+        self.pins_to_mode_mapper = parameters.pins_to_mode_mapper
 
-    def read_data(self):
+    def read_data(self) -> Tuple[int, int, int]:
         """Read the data from the switch.
 
         Returns
         -------
-        str
-            The current mode of the robot.
+        Tuple[int, int, int]
+            The states of the switch pins (normal, optimization, idle).
         """
-        if GPIO.input(self._input_pin_numbers["normal_pin"]):
-            return "normal"
-        elif GPIO.input(self._input_pin_numbers["optimization_pin"]):
-            return "optimization"
-        elif GPIO.input(self._input_pin_numbers["idle_pin"]):
-            return "idle"
+        pass
+        # return (
+        #     GPIO.input(self._input_pin_numbers["normal_pin"]),
+        #     GPIO.input(self._input_pin_numbers["optimization_pin"]),
+        #     GPIO.input(self._input_pin_numbers["idle_pin"]),
+        # )
+
+    def get_selected_mode(self):
+        """Get the selected mode.
+
+        Returns
+        -------
+        object
+            The selected mode.
+        """
+        normal_pin, optimization_pin, idle_pin = self.read_data()
+        if normal_pin == 1:
+            return self.pins_to_mode_mapper["normal_pin"]
+        elif optimization_pin == 1:
+            return self.pins_to_mode_mapper["optimization_pin"]
+        elif idle_pin == 1:
+            return self.pins_to_mode_mapper["idle_pin"]
         else:
-            logger.warning("No mode is selected. The robot is in idle mode.")
-            return "idle"
+            return None
 
 
 class OLEDDisplayParameters(BasePeripheralParameters):

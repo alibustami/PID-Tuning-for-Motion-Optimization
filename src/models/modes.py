@@ -1,6 +1,5 @@
 """The modes of the robot."""
 from interfaces.interfaces import BaseMode
-from src.optimizers.bayesian_optimizer import BaeysianOptimizer
 from src.settings import logger
 
 
@@ -13,13 +12,11 @@ class OptimizationMode(BaseMode):
 
     def exit(self):
         """Exit this mode."""
-        print("Exiting Optimization Mode.")
+        logger.info("Exiting Optimization Mode.")
 
     def execute(self):
         """Execute this mode."""
         logger.info("Executing Optimization Mode.")
-        Optimizer = BaeysianOptimizer()
-        Optimizer.optimize()
 
 
 class RunningMode(BaseMode):
