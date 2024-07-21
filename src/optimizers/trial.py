@@ -38,6 +38,7 @@ optimizer = BayesianOptimizer(
     experiment_values_dump_rate=100,
     set_point=set_point,
     arduino_connection_object=connection_object,
+    selected_init_state=0,
 )
 clear_input_buffer(connection_object)
 optimizer.run()
