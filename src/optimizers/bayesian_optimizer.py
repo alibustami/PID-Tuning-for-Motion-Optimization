@@ -1,4 +1,5 @@
 """This module contains the BayesianOptimizer optimizer class."""
+
 import os
 from datetime import datetime
 from functools import lru_cache
@@ -22,6 +23,7 @@ from src.utils.helper import (
     results_columns,
     start_experimental_run_on_robot,
 )
+from src.utils.utils_funcs import load_init_states
 
 
 class BayesianOptimizer:
@@ -30,6 +32,7 @@ class BayesianOptimizer:
     def __init__(
         self,
         set_point: float,
+        selected_init_state: int,
         parameters_bounds: Dict[str, Tuple[float, float]],
         constraint: OrderedDict[str, Tuple[float, float]] = None,
         n_iter: int = 50,
@@ -62,6 +65,9 @@ class BayesianOptimizer:
         self.experiment_values_dump_rate = experiment_values_dump_rate
         self.arduino_connection_object = arduino_connection_object
 
+        init_states = load_init_states("init_states.json")
+        self.init_state = init_states[selected_init_state]
+
         self._init_optimizer()
 
         self.results_df = pd.DataFrame(columns=results_columns)
@@ -74,6 +80,14 @@ class BayesianOptimizer:
 
     def run(self) -> None:
         """Optimize the PID controller parameters using BayesianOptimizer Optimization."""
+        self.optimizer.probe(
+            params={
+                "Kp": self.init_state[0],
+                "Ki": self.init_state[1],
+                "Kd": self.init_state[2],
+            },
+            lazy=True,
+        )
         self.optimizer.maximize(n_iter=self.n_iter, init_points=2)
 
         print(self.optimizer.max)
@@ -164,13 +178,13 @@ class BayesianOptimizer:
             Kp, Ki, Kd values, converted to integers.
         """
         # try:
-        response_data: Union[
-            List[float], None
-        ] = start_experimental_run_on_robot(
-            arduino_connection_object=self.arduino_connection_object,
-            constants=constants,
-            run_time=self.experiment_total_run_time,
-            dump_rate=self.experiment_values_dump_rate,
+        response_data: Union[List[float], None] = (
+            start_experimental_run_on_robot(
+                arduino_connection_object=self.arduino_connection_object,
+                constants=constants,
+                run_time=self.experiment_total_run_time,
+                dump_rate=self.experiment_values_dump_rate,
+            )
         )
         error_values = [output - self.set_point for output in response_data]
         # log_optimizaer_data(

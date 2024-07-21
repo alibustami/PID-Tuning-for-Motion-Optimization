@@ -1,4 +1,5 @@
 """This module contains the differential evolution optimizer."""
+
 import os
 from datetime import datetime
 from functools import lru_cache
@@ -23,6 +24,7 @@ from src.utils.helper import (
     results_columns,
     start_experimental_run_on_robot,
 )
+from src.utils.utils_funcs import load_init_states
 
 
 class DifferentialEvolutionOptimizer:
@@ -31,6 +33,7 @@ class DifferentialEvolutionOptimizer:
     def __init__(
         self,
         arduino_connection_object: Serial,
+        selected_init_state: int,
         parameters_bounds: Dict[str, Tuple[float, float]],
         constraint: OrderedDict[str, Tuple[float, float]] = None,
         n_iter: int = 50,
@@ -69,6 +72,9 @@ class DifferentialEvolutionOptimizer:
         self.experiment_values_dump_rate = experiment_values_dump_rate
         self.set_point = set_point
         self.experiment_id = 1
+
+        init_states = load_init_states("init_states.json")
+        self.init_state = init_states[selected_init_state]
 
         self.results_df = pd.DataFrame(columns=results_columns)
         if not os.path.exists("DE-results"):
@@ -148,7 +154,7 @@ class DifferentialEvolutionOptimizer:
             f"lower_constraint_bounds {lower_constraint_bounds}   -- upper_constraint_bounds {upper_constraint_bounds}"
         )
         self.optimizer = differential_evolution(
-            init="random",
+            init=self.init_state,
             disp=True,
             tol=0.5,
             atol=0.5,
@@ -158,13 +164,15 @@ class DifferentialEvolutionOptimizer:
             func=self.objective_function,
             bounds=list(self.parameters_bounds.values()),
             popsize=2,
-            constraints=NonlinearConstraint(
-                fun=self.constraint_function,
-                lb=lower_constraint_bounds,
-                ub=upper_constraint_bounds,
-            )
-            if self.constraint
-            else None,
+            constraints=(
+                NonlinearConstraint(
+                    fun=self.constraint_function,
+                    lb=lower_constraint_bounds,
+                    ub=upper_constraint_bounds,
+                )
+                if self.constraint
+                else None
+            ),
         )
         print("--------- OPTIMIZATION DONE --------")
         print(self.optimizer.x)
@@ -181,13 +189,13 @@ class DifferentialEvolutionOptimizer:
             Kp, Ki, Kd values, converted to integers.
         """
         # try:
-        response_data: Union[
-            List[float], None
-        ] = start_experimental_run_on_robot(
-            arduino_connection_object=self.arduino_connection_object,
-            constants=constants,
-            run_time=self.experiment_total_run_time,
-            dump_rate=self.experiment_values_dump_rate,
+        response_data: Union[List[float], None] = (
+            start_experimental_run_on_robot(
+                arduino_connection_object=self.arduino_connection_object,
+                constants=constants,
+                run_time=self.experiment_total_run_time,
+                dump_rate=self.experiment_values_dump_rate,
+            )
         )
         error_values = [output - self.set_point for output in response_data]
 
