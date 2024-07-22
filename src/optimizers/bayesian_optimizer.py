@@ -75,7 +75,7 @@ class BayesianOptimizer:
             os.makedirs("BO-results")
         self.file_path = os.path.join(
             "BO-results",
-            f"{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}_de.csv",
+            f"{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}_init_{selected_init_state}_bo.csv",
         )
 
     def run(self) -> None:

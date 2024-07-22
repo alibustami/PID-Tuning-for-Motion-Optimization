@@ -81,7 +81,7 @@ class DifferentialEvolutionOptimizer:
             os.makedirs("DE-results")
         self.file_path = os.path.join(
             "DE-results",
-            f"{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}_de.csv",
+            f"{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}_init_{selected_init_state}_de.csv",
         )
 
     def constraint_function(self, inputs):
