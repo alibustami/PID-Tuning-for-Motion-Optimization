@@ -2,6 +2,7 @@
 
 import functools
 import json
+import threading
 import time
 from typing import List, Tuple
 
@@ -55,32 +56,31 @@ def monitor_resources(func):
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
         process = psutil.Process()
-        max_cpu = 0
-        max_ram = 0
+        usage_stats = {"max_cpu": 0, "max_ram": 0}
 
         def get_usage():
-            nonlocal max_cpu, max_ram
-            max_cpu = max(max_cpu, process.cpu_percent(interval=0.1))
-            max_ram = max(max_ram, process.memory_info().rss)
-
-        import threading
-
-        def monitor():
             while not stop_event.is_set():
-                get_usage()
+                usage_stats["max_cpu"] = max(
+                    usage_stats["max_cpu"], process.cpu_percent(interval=0.1)
+                )
+                usage_stats["max_ram"] = max(
+                    usage_stats["max_ram"],
+                    process.memory_info().rss / (1024 * 1024),
+                )
                 time.sleep(0.1)
 
+        process.cpu_percent(interval=0.1)
+
         stop_event = threading.Event()
-        monitor_thread = threading.Thread(target=monitor)
+        monitor_thread = threading.Thread(target=get_usage)
         monitor_thread.start()
 
         try:
-            result = func(*args, **kwargs)
+            result = func(*args, usage_stats=usage_stats, **kwargs)
         finally:
             stop_event.set()
             monitor_thread.join()
 
-        max_ram_mb = max_ram / (1024 * 1024)
-        return result, max_cpu, max_ram_mb
+        return result
 
     return wrapper
