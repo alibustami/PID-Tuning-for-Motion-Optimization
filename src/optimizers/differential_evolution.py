@@ -1,9 +1,11 @@
 """This module contains the differential evolution optimizer."""
-
+import json
 import os
+import sys
+import time
 from datetime import datetime
 from functools import lru_cache
-from random import randint
+from random import randint, random
 from typing import Dict, List, OrderedDict, Tuple, Union
 
 import numpy as np
@@ -24,7 +26,7 @@ from src.utils.helper import (
     results_columns,
     start_experimental_run_on_robot,
 )
-from src.utils.utils_funcs import load_init_states
+from src.utils.utils_funcs import load_init_states, monitor_resources
 
 
 class DifferentialEvolutionOptimizer:
@@ -34,6 +36,7 @@ class DifferentialEvolutionOptimizer:
         self,
         arduino_connection_object: Serial,
         selected_init_state: int,
+        objective_value_limit_early_stop: int,
         parameters_bounds: Dict[str, Tuple[float, float]],
         constraint: OrderedDict[str, Tuple[float, float]] = None,
         n_iter: int = 50,
@@ -72,6 +75,10 @@ class DifferentialEvolutionOptimizer:
         self.experiment_values_dump_rate = experiment_values_dump_rate
         self.set_point = set_point
         self.experiment_id = 1
+        self.selected_init_state = selected_init_state
+        self.objective_value_limit_early_stop = (
+            objective_value_limit_early_stop
+        )
 
         init_states = load_init_states("init_states.json")
         self.init_state = init_states[selected_init_state]
@@ -83,9 +90,11 @@ class DifferentialEvolutionOptimizer:
             "DE-results",
             f"{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}_init_{selected_init_state}_de.csv",
         )
+        self.trials_counter = 0
 
     def constraint_function(self, inputs):
         """TO BE IMPLEMENTED."""
+        self.trials_counter += 1
         kp, ki, kd = inputs[0], inputs[1], inputs[2]
 
         # self.set_point = 0
@@ -138,8 +147,10 @@ class DifferentialEvolutionOptimizer:
 
         return settling_time
 
-    def run(self) -> None:
+    # @monitor_resources
+    def run(self, exp_start_time: float) -> None:
         """Optimize the PID controller parameters using Differential Evolution Optimization."""
+        self.exp_start_time = exp_start_time
         lower_constraint_bounds = [
             self.constraint[constraint_name][0]
             for constraint_name in self.constraint
@@ -153,11 +164,37 @@ class DifferentialEvolutionOptimizer:
         logger.info(
             f"lower_constraint_bounds {lower_constraint_bounds}   -- upper_constraint_bounds {upper_constraint_bounds}"
         )
+
         self.optimizer = differential_evolution(
-            init=self.init_state,
+            init=np.array(
+                [
+                    self.init_state,
+                    [
+                        randint(1, 25),
+                        randint(0, 100) / 100,
+                        randint(0, 100) / 100,
+                    ],
+                    [
+                        randint(1, 25),
+                        randint(0, 100) / 100,
+                        randint(0, 100) / 100,
+                    ],
+                    [
+                        randint(1, 25),
+                        randint(0, 100) / 100,
+                        randint(0, 100) / 100,
+                    ],
+                    [
+                        randint(1, 25),
+                        randint(0, 100) / 100,
+                        randint(0, 100) / 100,
+                    ],
+                ],
+                dtype=np.float32,
+            ),
             disp=True,
-            tol=0.5,
-            atol=0.5,
+            tol=0,
+            atol=0,
             workers=1,
             maxiter=self.n_iter,
             polish=False,
@@ -173,11 +210,25 @@ class DifferentialEvolutionOptimizer:
                 if self.constraint
                 else None
             ),
+            callback=self.results_callback,
         )
-        print("--------- OPTIMIZATION DONE --------")
-        print(self.optimizer.x)
-        print(self.optimizer.fun)
-        self._run_experiment.cache_clear()
+        self.finalize(self.optimizer.x, self.optimizer.fun)
+
+    def results_callback(self, x, convergence):
+        print(
+            "------------------------------- Results Callback -------------------------------"
+        )
+        print(x)
+
+        kp, ki, kd = x
+        _, angle_values = self._run_experiment((kp, ki, kd))
+        settling_time = calculate_settling_time(
+            angle_values, tolerance=0.05, final_value=self.set_point
+        )
+
+        if settling_time <= self.objective_value_limit_early_stop:
+            self.finalize(x, settling_time)
+            sys.exit()
 
     @lru_cache(maxsize=None)
     def _run_experiment(self, constants: Tuple[int]) -> None:
@@ -188,18 +239,59 @@ class DifferentialEvolutionOptimizer:
         constants : Tuple[int]
             Kp, Ki, Kd values, converted to integers.
         """
-        # try:
-        response_data: Union[List[float], None] = (
-            start_experimental_run_on_robot(
-                arduino_connection_object=self.arduino_connection_object,
-                constants=constants,
-                run_time=self.experiment_total_run_time,
-                dump_rate=self.experiment_values_dump_rate,
-            )
+        response_data: Union[
+            List[float], None
+        ] = start_experimental_run_on_robot(
+            arduino_connection_object=self.arduino_connection_object,
+            constants=constants,
+            run_time=self.experiment_total_run_time,
+            dump_rate=self.experiment_values_dump_rate,
         )
         error_values = [output - self.set_point for output in response_data]
 
         return error_values, response_data
+
+    def finalize(self, x, settling_time):
+        exp_end_time = time.time()
+        total_exp_time = exp_end_time - self.exp_start_time
+        txt_file_path = os.path.join(
+            "DE-results",
+            f"{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}_init_{self.selected_init_state}_de.txt",
+        )
+
+        # lines = [
+        #     str(self.parameters_bounds),
+        #     str(self.constraint),
+        #     str(self.n_iter),
+        #     str(self.experiment_total_run_time),
+        #     str(self.experiment_values_dump_rate),
+        #     str(self.selected_init_state),
+        #     str(self.objective_value_limit_early_stop),
+        #     str(total_exp_time),
+        #     str(x),
+        #     str(settling_time),
+
+        # ]
+        results_summery = {
+            "parameters_bounds": self.parameters_bounds,
+            "constraint": self.constraint,
+            "n_iter": self.n_iter,
+            "n_trials": self.trials_counter,
+            "experiment_total_run_time": self.experiment_total_run_time,
+            "experiment_values_dump_rate": self.experiment_values_dump_rate,
+            "selected_init_state": self.selected_init_state,
+            "objective_value_limit_early_stop": self.objective_value_limit_early_stop,
+            "total_exp_time": total_exp_time,
+            "x": x,
+            "settling_time": settling_time,
+        }
+
+        with open(txt_file_path, "w") as file:
+            file.write(str(results_summery))
+
+
+        print("--------- OPTIMIZATION DONE --------")
+        self._run_experiment.cache_clear()
 
     def log_trial_results(
         self,
