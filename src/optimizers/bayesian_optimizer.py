@@ -1,7 +1,7 @@
 """This module contains the BayesianOptimizer optimizer class."""
-
 import os
 import sys
+import time
 from datetime import datetime
 from functools import lru_cache
 from typing import Dict, List, OrderedDict, Tuple, Union
@@ -188,11 +188,14 @@ class BayesianOptimizer:
         print(
             "------------------------------- Results Callback -------------------------------"
         )
-        print(x)
+        if "optimization:step" != event:
+            return
+        if not x.res[-1]["allowed"]:
+            return
 
-        kp = x["params"]["Kp"]
-        ki = x["params"]["Ki"]
-        kd = x["params"]["Kd"]
+        kp = x.res[-1]["params"]["Kp"]
+        ki = x.res[-1]["params"]["Ki"]
+        kd = x.res[-1]["params"]["Kd"]
 
         _, angle_values = self._run_experiment((kp, ki, kd))
         settling_time = calculate_settling_time(
@@ -202,6 +205,47 @@ class BayesianOptimizer:
         if settling_time <= self.objective_value_limit_early_stop:
             self.finalize(x, settling_time)
             sys.exit()
+
+    def finalize(self, x, settling_time):
+        exp_end_time = time.time()
+        total_exp_time = exp_end_time - self.exp_start_time
+        txt_file_path = os.path.join(
+            "BO-results",
+            f"{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}_init_{self.selected_init_state}_de.txt",
+        )
+
+        # lines = [
+        #     str(self.parameters_bounds),
+        #     str(self.constraint),
+        #     str(self.n_iter),
+        #     str(self.experiment_total_run_time),
+        #     str(self.experiment_values_dump_rate),
+        #     str(self.selected_init_state),
+        #     str(self.objective_value_limit_early_stop),
+        #     str(total_exp_time),
+        #     str(x),
+        #     str(settling_time),
+
+        # ]
+        results_summery = {
+            "parameters_bounds": self.parameters_bounds,
+            "constraint": self.constraint,
+            "n_iter": self.n_iter,
+            "n_trials": self.trials_counter,
+            "experiment_total_run_time": self.experiment_total_run_time,
+            "experiment_values_dump_rate": self.experiment_values_dump_rate,
+            "selected_init_state": self.selected_init_state,
+            "objective_value_limit_early_stop": self.objective_value_limit_early_stop,
+            "total_exp_time": total_exp_time,
+            "x": x.max["params"],
+            "settling_time": settling_time,
+        }
+
+        with open(txt_file_path, "w") as file:
+            file.write(str(results_summery))
+
+        print("--------- OPTIMIZATION DONE --------")
+        self._run_experiment.cache_clear()
 
     @lru_cache(maxsize=None)
     def _run_experiment(self, constants: Tuple[int]) -> None:
@@ -213,13 +257,13 @@ class BayesianOptimizer:
             Kp, Ki, Kd values, converted to integers.
         """
         # try:
-        response_data: Union[List[float], None] = (
-            start_experimental_run_on_robot(
-                arduino_connection_object=self.arduino_connection_object,
-                constants=constants,
-                run_time=self.experiment_total_run_time,
-                dump_rate=self.experiment_values_dump_rate,
-            )
+        response_data: Union[
+            List[float], None
+        ] = start_experimental_run_on_robot(
+            arduino_connection_object=self.arduino_connection_object,
+            constants=constants,
+            run_time=self.experiment_total_run_time,
+            dump_rate=self.experiment_values_dump_rate,
         )
         error_values = [output - self.set_point for output in response_data]
         # log_optimizaer_data(
