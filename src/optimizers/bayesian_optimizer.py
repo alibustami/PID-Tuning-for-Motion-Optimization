@@ -1,12 +1,14 @@
 """This module contains the BayesianOptimizer optimizer class."""
 
 import os
+import sys
 from datetime import datetime
 from functools import lru_cache
 from typing import Dict, List, OrderedDict, Tuple, Union
 
 import pandas as pd
 from bayes_opt import BayesianOptimization
+from bayes_opt.event import Events
 from scipy.optimize import NonlinearConstraint
 from serial import Serial
 
@@ -33,6 +35,7 @@ class BayesianOptimizer:
         self,
         set_point: float,
         selected_init_state: int,
+        objective_value_limit_early_stop: int,
         parameters_bounds: Dict[str, Tuple[float, float]],
         constraint: OrderedDict[str, Tuple[float, float]] = None,
         n_iter: int = 50,
@@ -65,8 +68,12 @@ class BayesianOptimizer:
         self.experiment_values_dump_rate = experiment_values_dump_rate
         self.arduino_connection_object = arduino_connection_object
 
+        self.selected_init_state = selected_init_state
         init_states = load_init_states("init_states.json")
         self.init_state = init_states[selected_init_state]
+        self.objective_value_limit_early_stop = (
+            objective_value_limit_early_stop
+        )
 
         self._init_optimizer()
 
@@ -77,9 +84,11 @@ class BayesianOptimizer:
             "BO-results",
             f"{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}_init_{selected_init_state}_bo.csv",
         )
+        self.trials_counter = 0
 
-    def run(self) -> None:
+    def run(self, exp_start_time: float) -> None:
         """Optimize the PID controller parameters using BayesianOptimizer Optimization."""
+        self.exp_start_time = exp_start_time
         self.optimizer.probe(
             params={
                 "Kp": self.init_state[0],
@@ -105,6 +114,7 @@ class BayesianOptimizer:
         Tuple[float, float]
             The constraint values (overshoot, raise_time)
         """
+        self.trials_counter += 1
         kp, ki, kd = inputs["Kp"], inputs["Ki"], inputs["Kd"]
         error_values, angles_data = self._run_experiment((kp, ki, kd))
         overshoot = calculate_relative_overshoot(angles_data, self.set_point)
@@ -167,6 +177,31 @@ class BayesianOptimizer:
             constraint=constraint_model,
             verbose=2,
         )
+        self.optimizer.subscribe(
+            event=Events.OPTIMIZATION_STEP,
+            subscriber="logger",
+            callback=self.results_callback,
+        )
+
+    def results_callback(self, event, x):
+        """Call back function to log the results of the optimization."""
+        print(
+            "------------------------------- Results Callback -------------------------------"
+        )
+        print(x)
+
+        kp = x["params"]["Kp"]
+        ki = x["params"]["Ki"]
+        kd = x["params"]["Kd"]
+
+        _, angle_values = self._run_experiment((kp, ki, kd))
+        settling_time = calculate_settling_time(
+            angle_values, tolerance=0.05, final_value=self.set_point
+        )
+
+        if settling_time <= self.objective_value_limit_early_stop:
+            self.finalize(x, settling_time)
+            sys.exit()
 
     @lru_cache(maxsize=None)
     def _run_experiment(self, constants: Tuple[int]) -> None:
