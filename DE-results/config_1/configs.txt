@@ -1,0 +1,3 @@
+popsize=15
+recombination=0.9
+mutation=0.5
