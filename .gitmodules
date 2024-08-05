@@ -1,3 +1,5 @@
 [submodule "_deps/bayesian-optimization"]
 	path = _deps/bayesian-optimization
 	url = https://github.com/bayesian-optimization/BayesianOptimization.git
+	branch = master
+	commit = dc4e8ef21835d694c2debc82c6d509cfa419d0f6

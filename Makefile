@@ -9,6 +9,11 @@ install:
 	pip install --upgrade pip setuptools wheel && \
 	python -m pip install -e . && \
 	pre-commit install
+
+	git submodule add https://github.com/bayesian-optimization/BayesianOptimization.git _deps/bayesian-optimization
+	cd _deps/bayesian-optimization && git checkout dc4e8ef21835d694c2debc82c6d509cfa419d0f6
+
+	pip install -e _deps/bayesian-optimization
 	@echo "Package installed successfully"
 
 test:
