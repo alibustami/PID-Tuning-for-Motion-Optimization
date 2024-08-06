@@ -216,7 +216,7 @@ class BayesianOptimizer:
         total_exp_time = exp_end_time - self.exp_start_time
         txt_file_path = os.path.join(
             "BO-results",
-            f"{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}_init_{self.selected_init_state}_de.txt",
+            f"{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}_init_{self.selected_init_state}_bo.txt",
         )
 
         # lines = [
