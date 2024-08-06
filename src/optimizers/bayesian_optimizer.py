@@ -117,6 +117,7 @@ class BayesianOptimizer:
             The constraint values (overshoot, raise_time)
         """
         self.trials_counter += 1
+        logger.info(f"Trial {self.trials_counter} started")
         kp, ki, kd = inputs["Kp"], inputs["Ki"], inputs["Kd"]
         error_values, angles_data = self._run_experiment((kp, ki, kd))
         overshoot = calculate_relative_overshoot(angles_data, self.set_point)
