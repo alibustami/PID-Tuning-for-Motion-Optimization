@@ -200,7 +200,10 @@ class DifferentialEvolutionOptimizer:
             polish=False,
             func=self.objective_function,
             bounds=list(self.parameters_bounds.values()),
-            popsize=2,
+            popsize=15,
+            recombination=0.6,
+            mutation=0.6,
+            strategy="rand1bin",
             constraints=(
                 NonlinearConstraint(
                     fun=self.constraint_function,
