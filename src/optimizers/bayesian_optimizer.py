@@ -1,4 +1,5 @@
 """This module contains the BayesianOptimizer optimizer class."""
+
 import os
 import sys
 import time
@@ -98,7 +99,7 @@ class BayesianOptimizer:
             },
             lazy=True,
         )
-        self.optimizer.maximize(n_iter=self.n_iter, init_points=2)
+        self.optimizer.maximize(n_iter=self.n_iter, init_points=4)
 
         print(self.optimizer.max)
 
@@ -260,13 +261,13 @@ class BayesianOptimizer:
             Kp, Ki, Kd values, converted to integers.
         """
         # try:
-        response_data: Union[
-            List[float], None
-        ] = start_experimental_run_on_robot(
-            arduino_connection_object=self.arduino_connection_object,
-            constants=constants,
-            run_time=self.experiment_total_run_time,
-            dump_rate=self.experiment_values_dump_rate,
+        response_data: Union[List[float], None] = (
+            start_experimental_run_on_robot(
+                arduino_connection_object=self.arduino_connection_object,
+                constants=constants,
+                run_time=self.experiment_total_run_time,
+                dump_rate=self.experiment_values_dump_rate,
+            )
         )
         error_values = [output - self.set_point for output in response_data]
         # log_optimizaer_data(
