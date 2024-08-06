@@ -8,6 +8,7 @@ from typing import Dict, List, OrderedDict, Tuple, Union
 
 import pandas as pd
 from bayes_opt import BayesianOptimization
+from bayes_opt.acquisition import ExpectedImprovement
 from bayes_opt.event import Events
 from scipy.optimize import NonlinearConstraint
 from serial import Serial
@@ -171,11 +172,13 @@ class BayesianOptimizer:
             lb=lower_constraint_bounds,
             ub=upper_constraint_bounds,
         )
+        acquisition_function = ExpectedImprovement(xi=2)
         self.optimizer = BayesianOptimization(
             f=self.objective_function,
             pbounds=self.parameters_bounds,
             constraint=constraint_model,
             verbose=2,
+            acquisition_function=acquisition_function,
         )
         self.optimizer.subscribe(
             event=Events.OPTIMIZATION_STEP,
