@@ -139,22 +139,9 @@ class BayesianOptimizer:
             The objective value, which is the negative of the sum of the integral of the squared error over time
         """
         kp, ki, kd = inputs["Kp"], inputs["Ki"], inputs["Kd"]
-        error_values, angles_data = self._run_experiment((kp, ki, kd))
+        _, angles_data = self._run_experiment((kp, ki, kd))
         settling_time = calculate_settling_time(
             angles_data, tolerance=0.05, final_value=self.set_point
-        )
-        overshoot = calculate_relative_overshoot(angles_data, self.set_point)
-        rise_time = calculate_rise_time(angles_data, self.set_point)
-
-        self.log_trial_results(
-            kp=kp,
-            ki=ki,
-            kd=kd,
-            overshoot=overshoot,
-            rise_time=rise_time,
-            settling_time=settling_time,
-            angle_values=angles_data,
-            set_point=self.set_point,
         )
 
         return -settling_time
@@ -205,6 +192,19 @@ class BayesianOptimizer:
         _, angle_values = self._run_experiment((kp, ki, kd))
         settling_time = calculate_settling_time(
             angle_values, tolerance=0.05, final_value=self.set_point
+        )
+        overshoot = calculate_relative_overshoot(angle_values, self.set_point)
+        rise_time = calculate_rise_time(angle_values, self.set_point)
+
+        self.log_trial_results(
+            kp=kp,
+            ki=ki,
+            kd=kd,
+            overshoot=overshoot,
+            rise_time=rise_time,
+            settling_time=settling_time,
+            angle_values=angle_values,
+            set_point=self.set_point,
         )
 
         if settling_time <= self.objective_value_limit_early_stop:
@@ -312,5 +312,5 @@ class BayesianOptimizer:
             ],
             ignore_index=True,
         )
-        self.experiment_id += 1
+        # self.experiment_id += 1
         self.results_df.to_csv(self.file_path, index=False)
