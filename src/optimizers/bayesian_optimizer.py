@@ -99,7 +99,7 @@ class BayesianOptimizer:
             },
             lazy=True,
         )
-        self.optimizer.maximize(n_iter=self.n_iter, init_points=4)
+        self.optimizer.maximize(n_iter=self.n_iter, init_points=20)
 
         print(self.optimizer.max)
 
