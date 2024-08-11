@@ -212,6 +212,7 @@ class BayesianOptimizer:
             sys.exit()
 
     def finalize(self, x, settling_time):
+        """Finalize the optimization process and log the results."""
         exp_end_time = time.time()
         total_exp_time = exp_end_time - self.exp_start_time
         txt_file_path = os.path.join(
