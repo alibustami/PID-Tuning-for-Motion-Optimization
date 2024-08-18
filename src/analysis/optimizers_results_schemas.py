@@ -78,6 +78,20 @@ class Trial(BaseModel):
             raise ValueError("CSV file must be a pandas DataFrame")
         return v
 
+    @property
+    def non_converging_count(self) -> int:
+        """Get the number of None values in the TXT files."""
+        none_count = sum(
+            getattr(self, f"init_{i}_txt") is None for i in range(6)
+        )
+
+        return none_count
+
+    @property
+    def trials_count(self) -> int:
+        """Get the number of trials."""
+        return 6
+
 
 class Config(BaseModel):
     """A single configuration."""
@@ -87,6 +101,24 @@ class Config(BaseModel):
     # trial_3: Optional[Trial] = None
     configs_file: Path
 
+    @property
+    def non_converging_count(self) -> int:
+        """Get the number of None values in the TXT files."""
+        none_count = self.trial_1.non_converging_count
+        # none_count += self.trial_2.non_converging_count()
+        # none_count += self.trial_3.non_converging_count()
+
+        return none_count
+
+    @property
+    def trials_count(self) -> int:
+        """Get the number of trials."""
+        trials_count = self.trial_1.trials_count
+        # trials_count += self.trial_2.trials_count()
+        # trials_count += self.trial_3.trials_count()
+
+        return trials_count
+
 
 class OptimizerResults(BaseModel):
     """Optimizer results."""
@@ -94,6 +126,24 @@ class OptimizerResults(BaseModel):
     config_1: Config
     config_2: Config
     config_3: Config
+
+    @property
+    def non_converging_count(self) -> int:
+        """Get the number of None values in the TXT files."""
+        none_count = self.config_1.non_converging_count
+        none_count += self.config_2.non_converging_count
+        none_count += self.config_3.non_converging_count
+
+        return none_count
+
+    @property
+    def trials_count(self) -> int:
+        """Get the number of trials."""
+        trials_count = self.config_1.trials_count
+        trials_count += self.config_2.trials_count
+        trials_count += self.config_3.trials_count
+
+        return trials_count
 
 
 class DifferentialEvolutionResults(OptimizerResults):
