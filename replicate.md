@@ -51,7 +51,7 @@ make install
 ## Run the Robot
 First you need to donwload the MPU6050 library from [here](https://github.com/alibustami/MPU6050_light) as zip file, then added it to arduino as a library.
 
-Then, you need to upload the `arduino/arduino.ino` file to the Arduino board.
+Then, you need to upload the `arduino/updated.ino` file to the Arduino board.
 
 All the configurations are in the `configuration.yaml` file, you can change the values as needed. To run the robot, execute the following command:
 ```
