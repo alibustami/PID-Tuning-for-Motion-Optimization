@@ -14,7 +14,6 @@ This repository contains the implementation and evaluation code for the research
     - [Performance Metrics](#performance-metrics)
   - [Conclusion](#conclusion)
   - [Replicate](#replicate)
-  - [References](#references)
 
 ## Introduction
 
@@ -71,7 +70,3 @@ The results demonstrate that DE provides a more reliable solution for tuning PID
 ## Replicate
 
 To replicate the study, follow the instructions in the [replicate.md](./replicate.md) file. The replication guide provides detailed steps for setting up the environment, running the experiments, and analyzing the results.
-
-## References
-
-The references for this study are available in the full research paper.
