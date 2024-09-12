@@ -20,6 +20,10 @@ The assembly of the robot is shown in the following video:
 
 ![](./assets/assemble.gif)
 
+Final assembly of the robot:
+
+![](./assets/merged.jpg)
+
 ## Wires Connection
 if you are using the Arduino UNO R3 with MPU 6050, connect the wires as shown in the following photo:
 
