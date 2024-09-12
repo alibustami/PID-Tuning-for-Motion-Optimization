@@ -1,0 +1,12 @@
+{
+    "de": {
+        "config_1": "exploration",
+        "config_2": "exploitation",
+        "config_3": "balanced"
+    },
+    "bo": {
+        "config_1": "balanced",
+        "config_2": "exploration",
+        "config_3": "exploitation"
+    }
+}

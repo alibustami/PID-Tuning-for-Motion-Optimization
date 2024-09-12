@@ -312,7 +312,7 @@ def start_experimental_run_on_robot(
             plt.xticks()
             plt.yticks()
             plt.show(block=False)
-            plt.savefig(f"deo_logs/{datetime.datetime.now()}.png")
+            # plt.savefig(f"deo_logs/{datetime.datetime.now()}.png")
             plt.pause(5)
             return angles_data
 
