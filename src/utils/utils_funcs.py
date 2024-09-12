@@ -4,16 +4,19 @@ import functools
 import json
 import threading
 import time
-from typing import List, Tuple
+from collections import OrderedDict
+from random import randint
+from typing import List, Tuple, Union
 
 import psutil
+from serial import Serial
 
-# def floats_converter(num: float) -> Tuple[int, int]:
-#     dec_len = len(str(num)) - len(str(int(num))) - 1
-
-#     int_num = int(str(num).replace(".", ""))
-
-#     return int_num, max(dec_len, 0)
+from src.configs import get_config
+from src.optimizers.bayesian_optimizer import BayesianOptimizer
+from src.optimizers.differential_evolution import (
+    DifferentialEvolutionOptimizer,
+)
+from src.utils.helper import clear_input_buffer
 
 
 def load_init_states(json_path: str) -> List[List[float]]:
@@ -84,3 +87,115 @@ def monitor_resources(func):
         return result
 
     return wrapper
+
+
+def select_optimizer(
+    selected_optimizer: str, connection_object: Serial
+) -> Union[DifferentialEvolutionOptimizer, BayesianOptimizer]:
+    """Select the optimizer based on the given name.
+
+    Parameters
+    ----------
+    selected_optimizer : str
+        The name of the optimizer to select.
+    connection_object : Serial
+        The serial connection object to the Arduino.
+
+    Returns
+    -------
+    Union[DifferentialEvolutionOptimizer, BayesianOptimizer]
+        The selected optimizer.
+    """
+    set_point = get_config("setpoint")
+    if "BO" == selected_optimizer:
+        optimizer = BayesianOptimizer(
+            parameters_bounds={
+                "Kp": (
+                    get_config("parameters_bounds.kp_lower_bound"),
+                    get_config("parameters_bounds.kp_upper_bound"),
+                ),
+                "Ki": (
+                    get_config("parameters_bounds.ki_lower_bound"),
+                    get_config("parameters_bounds.ki_upper_bound"),
+                ),
+                "Kd": (
+                    get_config("parameters_bounds.kd_lower_bound"),
+                    get_config("parameters_bounds.kd_upper_bound"),
+                ),
+            },
+            constraint=OrderedDict(
+                [
+                    (
+                        "overshoot",
+                        (
+                            get_config("constraint.overshoot_lower_bound"),
+                            get_config("constraint.overshoot_upper_bound"),
+                        ),
+                    ),
+                    (
+                        "risetime",
+                        (
+                            get_config("constraint.rise_time_lower_bound"),
+                            get_config("constraint.rise_time_upper_bound"),
+                        ),
+                    ),
+                ]
+            ),
+            n_iter=get_config("n_iterations"),
+            experiment_total_run_time=get_config("experiment_total_run_time"),
+            experiment_values_dump_rate=100,
+            set_point=set_point,
+            arduino_connection_object=connection_object,
+            selected_init_state=get_config("init_state"),
+            objective_value_limit_early_stop=2500,
+            selected_config=get_config("configuration"),
+        )
+    elif "DE" == selected_optimizer:
+        optimizer = DifferentialEvolutionOptimizer(
+            parameters_bounds={
+                "Kp": (
+                    get_config("parameters_bounds.kp_lower_bound"),
+                    get_config("parameters_bounds.kp_upper_bound"),
+                ),
+                "Ki": (
+                    get_config("parameters_bounds.ki_lower_bound"),
+                    get_config("parameters_bounds.ki_upper_bound"),
+                ),
+                "Kd": (
+                    get_config("parameters_bounds.kd_lower_bound"),
+                    get_config("parameters_bounds.kd_upper_bound"),
+                ),
+            },
+            constraint=OrderedDict(
+                [
+                    (
+                        "overshoot",
+                        (
+                            get_config("constraint.overshoot_lower_bound"),
+                            get_config("constraint.overshoot_upper_bound"),
+                        ),
+                    ),
+                    (
+                        "risetime",
+                        (
+                            get_config("constraint.rise_time_lower_bound"),
+                            get_config("constraint.rise_time_upper_bound"),
+                        ),
+                    ),
+                ]
+            ),
+            n_iter=get_config("n_iterations"),
+            experiment_total_run_time=get_config("experiment_total_run_time"),
+            experiment_values_dump_rate=100,
+            set_point=set_point,
+            arduino_connection_object=connection_object,
+            selected_init_state=get_config("init_state"),
+            objective_value_limit_early_stop=2500,
+            selected_config=get_config("configuration"),
+        )
+    else:
+        raise ValueError(
+            "Invalid optimizer selected, please check configurations.yaml"
+        )
+
+    return optimizer
