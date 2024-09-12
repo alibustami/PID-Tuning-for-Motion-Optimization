@@ -1,4 +1,5 @@
 """This module contains the package information."""
+
 from setuptools import setup
 
 with open("requirements.txt") as f:
@@ -6,15 +7,15 @@ with open("requirements.txt") as f:
 
 setup(
     name="PID Tuning for Motion Optimization",
-    version="0.0.1",
+    version="1.0.0",
     description="PID Tuning for Motion Optimization",
-    author=["Ali Albustami", "Zaid Ghazal", "Aseel Al-Wazani"],
+    author=["Ali Albustami", "Zaid Ghazal", "Khouloud Gaaloud"],
     author_email=[
-        "alialbustami@gmail.com",
-        "zaid.ghazal20@gmail.com",
-        "A.alwazani02@gmail.com",
+        "abustami@umich.edu",
+        "zghazal@umich.edu",
+        "kgaaloul@umich.edu",
     ],
-    python_requires=">=3.8",
+    python_requires=">=3.9",
     packages=["src"],
     install_requires=REQUIREMENTS,
     include_package_data=True,
