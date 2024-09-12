@@ -1,11 +1,13 @@
 """Utility functions for analysis scripts."""
 
 import os
+from collections import OrderedDict
 from pathlib import Path
 from typing import Dict, List
 
 import numpy as np
 import pandas as pd
+from numpy import array
 
 from src.analysis.optimizers_results_schemas import Gains
 
