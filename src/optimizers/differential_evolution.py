@@ -1,4 +1,5 @@
 """This module contains the differential evolution optimizer."""
+
 import json
 import os
 import sys
@@ -43,6 +44,7 @@ class DifferentialEvolutionOptimizer:
         experiment_total_run_time: int = 10000,
         experiment_values_dump_rate: int = 100,
         set_point: float = 90,
+        selected_config: int = 0,
     ):
         """Initialize the optimizer.
 
@@ -79,6 +81,9 @@ class DifferentialEvolutionOptimizer:
         self.objective_value_limit_early_stop = (
             objective_value_limit_early_stop
         )
+        if selected_config not in range(3):
+            raise ValueError("selected_config must be in [0, 1, 2]")
+        self.selected_config = selected_config
 
         init_states = load_init_states("init_states.json")
         self.init_state = init_states[selected_init_state]
@@ -164,6 +169,14 @@ class DifferentialEvolutionOptimizer:
         logger.info(
             f"lower_constraint_bounds {lower_constraint_bounds}   -- upper_constraint_bounds {upper_constraint_bounds}"
         )
+        configs = [
+            (0.6, 0.6),
+            (0.8, 0.3),
+            (0.5, 0.9),
+        ]  # (mutation, recombination)
+        selected_mutation, selected_recombination = configs[
+            self.selected_config
+        ]
 
         self.optimizer = differential_evolution(
             init=np.array(
@@ -201,8 +214,8 @@ class DifferentialEvolutionOptimizer:
             func=self.objective_function,
             bounds=list(self.parameters_bounds.values()),
             popsize=15,
-            recombination=0.6,
-            mutation=0.6,
+            recombination=selected_recombination,
+            mutation=selected_mutation,
             strategy="rand1bin",
             constraints=(
                 NonlinearConstraint(
@@ -218,6 +231,7 @@ class DifferentialEvolutionOptimizer:
         self.finalize(self.optimizer.x, self.optimizer.fun)
 
     def results_callback(self, x, convergence):
+        """Call back function to be called after each iteration."""
         print(
             "------------------------------- Results Callback -------------------------------"
         )
@@ -242,19 +256,20 @@ class DifferentialEvolutionOptimizer:
         constants : Tuple[int]
             Kp, Ki, Kd values, converted to integers.
         """
-        response_data: Union[
-            List[float], None
-        ] = start_experimental_run_on_robot(
-            arduino_connection_object=self.arduino_connection_object,
-            constants=constants,
-            run_time=self.experiment_total_run_time,
-            dump_rate=self.experiment_values_dump_rate,
+        response_data: Union[List[float], None] = (
+            start_experimental_run_on_robot(
+                arduino_connection_object=self.arduino_connection_object,
+                constants=constants,
+                run_time=self.experiment_total_run_time,
+                dump_rate=self.experiment_values_dump_rate,
+            )
         )
         error_values = [output - self.set_point for output in response_data]
 
         return error_values, response_data
 
     def finalize(self, x, settling_time):
+        """Finalize the optimization process."""
         exp_end_time = time.time()
         total_exp_time = exp_end_time - self.exp_start_time
         txt_file_path = os.path.join(
@@ -291,7 +306,6 @@ class DifferentialEvolutionOptimizer:
 
         with open(txt_file_path, "w") as file:
             file.write(str(results_summery))
-
 
         print("--------- OPTIMIZATION DONE --------")
         self._run_experiment.cache_clear()

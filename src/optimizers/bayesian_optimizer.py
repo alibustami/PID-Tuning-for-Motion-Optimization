@@ -44,6 +44,7 @@ class BayesianOptimizer:
         experiment_total_run_time: int = 10000,
         experiment_values_dump_rate: int = 100,
         arduino_connection_object: Serial = None,
+        selected_config: int = 0,
     ):
         """Initialize the optimizer.
 
@@ -76,6 +77,9 @@ class BayesianOptimizer:
         self.objective_value_limit_early_stop = (
             objective_value_limit_early_stop
         )
+        if selected_config not in range(3):
+            raise ValueError("selected_config should be one of [0, 1, 2]")
+        self.selected_config = selected_config
 
         self._init_optimizer()
 
@@ -161,7 +165,10 @@ class BayesianOptimizer:
             lb=lower_constraint_bounds,
             ub=upper_constraint_bounds,
         )
-        acquisition_function = ExpectedImprovement(xi=2)
+
+        configs = [0.1, 0.2, 0.01]
+        ei = configs[self.selected_config]
+        acquisition_function = ExpectedImprovement(xi=ei)
         self.optimizer = BayesianOptimization(
             f=self.objective_function,
             pbounds=self.parameters_bounds,
