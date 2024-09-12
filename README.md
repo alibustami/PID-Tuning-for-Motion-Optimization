@@ -1,55 +1,77 @@
-# PID-Tuning-for-Motion-Optimization
+# Evaluating Differential Evolution and Bayesian Optimization for Auto-Tuning Autonomous Mobile Robotics Systems
 
-![Python](https://img.shields.io/badge/python-3670A0?style=for-the-badge&logo=python&logoColor=ffdd54) ![Arduino](https://img.shields.io/badge/-Arduino-00979D?style=for-the-badge&logo=Arduino&logoColor=white) ![nVIDIA](https://img.shields.io/badge/nVIDIA-%2376B900.svg?style=for-the-badge&logo=nVIDIA&logoColor=white) ![SciPy](https://img.shields.io/badge/SciPy-%230C55A5.svg?style=for-the-badge&logo=scipy&logoColor=%white) ![C](https://img.shields.io/badge/c-%2300599C.svg?style=for-the-badge&logo=c&logoColor=white) ![Bosch](https://a11ybadges.com/badge?logo=bosch) <img alt="Pandas" src="https://img.shields.io/badge/pandas-%23150458.svg?style=for-the-badge&logo=pandas&logoColor=white" /> <img alt="Debian" src="https://img.shields.io/badge/Debian-D70A53?style=for-the-badge&logo=debian&logoColor=white" />
+This repository contains the implementation and evaluation code for the research paper **"Evaluating Differential Evolution and Bayesian Optimization for Auto-Tuning Autonomous Mobile Robotics Systems."** The study explores the use of Differential Evolution (DE) and Bayesian Optimization (BO) to automatically tune PID controllers for Differential Drive Mobile Robots (DDMRs), focusing on convergence behavior, robustness, and the impact of initial states on optimization performance.
 
-[![made-with-python](https://img.shields.io/badge/Made%20with-Python-1f425f.svg)](https://www.python.org/)
+## Table of Contents
 
-[![Generic badge](https://img.shields.io/badge/status-done-dark_green
-)](https://shields.io/)
-
-
-- [PID-Tuning-for-Motion-Optimization](#pid-tuning-for-motion-optimization)
+- [Evaluating Differential Evolution and Bayesian Optimization for Auto-Tuning Autonomous Mobile Robotics Systems](#evaluating-differential-evolution-and-bayesian-optimization-for-auto-tuning-autonomous-mobile-robotics-systems)
+  - [Table of Contents](#table-of-contents)
+  - [Introduction](#introduction)
   - [Methodology](#methodology)
-  - [Experiments Settings](#experiments-settings)
+  - [Experimental Settings](#experimental-settings)
   - [Results](#results)
     - [Key Findings](#key-findings)
+    - [Performance Metrics](#performance-metrics)
+  - [Conclusion](#conclusion)
   - [Replicate](#replicate)
+  - [References](#references)
+
+## Introduction
+
+PID controllers are widely used in control systems for precise motion control in mobile robotics. However, manual tuning of PID parameters is complex and time-consuming. This study investigates the effectiveness of Differential Evolution (DE) and Bayesian Optimization (BO) for automating PID tuning in DDMRs, focusing on optimizing controllers for in-place rotation tasks. The study evaluates the performance of DE and BO by defining various initial states and search configurations, comparing convergence speed, steady-state error, and the influence of initial parameters on convergence behavior.
 
 ## Methodology
 
-The methodology involves three phases:
+The evaluation involves three main phases:
 
-1. **Initial States Definition**: Six initial states were defined to influence the control system’s response during optimization. Each state adjusts the Proportional (P), Integral (I), and Derivative (D) gains differently to create diverse tuning scenarios.
+1. **Initial States Definition**: Six initial states are defined, each impacting the control system’s response differently during optimization.
+2. **Finding Cartesian Product**: The Cartesian Product of the initial states and configurations is computed, resulting in 18 unique pairs for each optimizer.
+3. **Run Trials and Save Results**: Trials are conducted using DE and BO, with each optimizer adjusting PID gains to achieve the desired performance criteria.
 
-2. **Finding Cartesian Product**: The Cartesian product of the defined configurations and initial states was computed, resulting in 18 unique trials.
+The key optimizers used are:
 
-3. **Run Trials and Save Results**: Trials were conducted using the specified configurations, and data were collected, including metrics like convergence speed, steady-state error, and optimal gain values.
+- **Differential Evolution (DE)**: A stochastic, population-based optimization algorithm known for its robustness in avoiding local optima.
+- **Bayesian Optimization (BO)**: A probabilistic model-based approach using Gaussian processes, effective for expensive, noisy optimization tasks.
 
-## Experiments Settings
+## Experimental Settings
 
-- **PID Gains Bounds**:
-  - Proportional Gain (\(K_p\)): [1, 25]
-  - Integral Gain (\(K_i\)): [0, 1]
-  - Derivative Gain (\(K_d\)): [0, 1]
+The study uses a custom-built Differential Drive Mobile Robot (DDMR) equipped with sensors and actuators, controlled via a Jetson Nano platform. The robot’s control system aims to achieve a 90-degree in-place rotation, with the following settings:
+
+- **PID Gains**:
+  - Proportional Gain (Kp): [1, 25]
+  - Integral Gain (Ki): [0, 1]
+  - Derivative Gain (Kd): [0, 1]
 
 - **Constraints**:
   - Maximum Overshoot: 30%
   - Maximum Rise Time: 1000 ms
+  - Objective: Settling Time ≤ 2500 ms
 
 - **Configurations**:
-  - **Balanced**: Mutation Rate: 60%, Crossover Rate: 60%
-  - **Exploration Focused**: Mutation Rate: 80%, Crossover Rate: 30%
-  - **Exploitation Focused**: Mutation Rate: 50%, Crossover Rate: 90%
+  - **Configuration 0**: Balanced exploration and exploitation
+  - **Configuration 1**: Exploration-focused
+  - **Configuration 2**: Exploitation-focused
 
 ## Results
 
-The results demonstrate that DE consistently avoids local optima and achieves superior convergence rates, while BO excels in finding optimal solutions with fewer iterations but is more susceptible to becoming trapped in local optima.
-
 ### Key Findings
-- DE outperforms BO in terms of robustness, maintaining a 100% convergence rate across all configurations.
-- BO converges faster but occasionally fails to escape local optima.
-- Initial states and configuration significantly impact optimizer performance, affecting convergence speed and steady-state error.
+
+- **RQ1 What is the propensity of BO and DE optimization algorithms to end up in local optima?** DE consistently outperforms BO in avoiding local optima, achieving a perfect convergence rate, while BO, though faster in convergence speed, is more susceptible to local traps.
+- **RQ2 What is the impact of the initial state on the optimizers' convergence speed, settling time, and optimal gain values?** The initial state significantly impacts optimizer performance, with BO achieving lower steady-state errors in some cases but struggling in certain initial conditions.
+- **RQ3 How do different configurations of the optimizers influence their final convergence behavior, including the likelihood of getting trapped in local optima, convergence speed, settling time and the determination of optimal gain values?** Configuration settings significantly influence the convergence behavior of DE and BO, with DE showing greater resilience against local optima at the cost of slower convergence.
+
+### Performance Metrics
+- DE shows robust convergence with slightly higher steady-state errors compared to BO.
+- BO offers faster convergence but occasionally gets trapped in local optima, especially under certain initial states.
+
+## Conclusion
+
+The results demonstrate that DE provides a more reliable solution for tuning PID controllers in DDMRs by avoiding local optima, while BO offers faster convergence at the risk of getting trapped. The choice of the optimizer and configuration should be tailored to the specific needs of the application, balancing exploration and exploitation based on performance requirements.
 
 ## Replicate
 
-To replicate the study, check the [replicate.md](./replicate.md) file for detailed instructions on setting up the environment, running the experiments, and analyzing the results.
+To replicate the study, follow the instructions in the [replicate.md](./replicate.md) file. The replication guide provides detailed steps for setting up the environment, running the experiments, and analyzing the results.
+
+## References
+
+The references for this study are available in the full research paper.
